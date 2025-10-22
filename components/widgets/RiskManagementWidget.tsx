@@ -1,6 +1,7 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldAlert, PieChart } from 'lucide-react';
+import { getLatestJournalEntries } from '../../db';
+import type { JournalEntry } from '../../types';
 
 const ProgressBar: React.FC<{ value: number }> = ({ value }) => {
     let color = 'bg-green-500';
@@ -19,6 +20,38 @@ const RiskManagementWidget: React.FC = () => {
     const totalRiskPercent = 2.5; // Example: 2.5% of total equity at risk
     const maxAllowedRisk = 6; // Max 6%
     const riskLevel = (totalRiskPercent / maxAllowedRisk) * 100;
+    
+    const [distribution, setDistribution] = useState<{name: string, value: number, color: string}[]>([]);
+
+    useEffect(() => {
+        const fetchSymbolData = async () => {
+            try {
+                const entries = await getLatestJournalEntries(10);
+                if (entries.length === 0) {
+                    setDistribution([]);
+                    return;
+                };
+
+                const counts = entries.reduce((acc, entry) => {
+                    const symbol = entry.symbol.toUpperCase();
+                    acc[symbol] = (acc[symbol] || 0) + 1;
+                    return acc;
+                }, {} as { [key: string]: number });
+                
+                const colors = ['#3b82f6', '#22c55e', '#ef4444', '#f97316', '#8b5cf6'];
+                const distData = Object.entries(counts).map(([symbol, count], index) => ({
+                    name: symbol,
+                    value: (count / entries.length) * 100,
+                    color: colors[index % colors.length]
+                }));
+                setDistribution(distData);
+
+            } catch (error) {
+                console.error("Failed to fetch symbol distribution data", error);
+            }
+        };
+        fetchSymbolData();
+    }, []);
 
   return (
     <div className="space-y-6">
@@ -32,13 +65,16 @@ const RiskManagementWidget: React.FC = () => {
         </div>
         
         <div>
-            <h4 className="text-sm font-semibold mb-3">توزیع ریسک بین نمادها</h4>
+            <h4 className="text-sm font-semibold mb-3">توزیع نمادها (۱۰ معامله اخیر)</h4>
             <div className="flex items-center justify-center text-gray-400">
                 <PieChart className="w-24 h-24" />
-                <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-500"></span> EURUSD (40%)</div>
-                    <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-green-500"></span> GBPUSD (25%)</div>
-                    <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500"></span> USDJPY (35%)</div>
+                 <div className="space-y-2 text-xs">
+                    {distribution.length > 0 ? distribution.map(item => (
+                         <div key={item.name} className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}}></span> 
+                            {item.name} ({item.value.toFixed(0)}%)
+                         </div>
+                    )) : <p className="text-xs">داده‌ای برای نمایش وجود ندارد.</p>}
                 </div>
             </div>
         </div>

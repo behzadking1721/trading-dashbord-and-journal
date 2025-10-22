@@ -29,9 +29,15 @@ const initDB = () => {
   return dbPromise;
 };
 
+// Dispatch a custom event whenever the journal is updated
+const dispatchUpdate = () => {
+    window.dispatchEvent(new CustomEvent('journalUpdated'));
+}
+
 export const addJournalEntry = async (entry: JournalEntry) => {
   const db = await initDB();
   await db.put(JOURNAL_STORE, entry);
+  dispatchUpdate();
 };
 
 export const getJournalEntries = async (): Promise<JournalEntry[]> => {
@@ -39,7 +45,16 @@ export const getJournalEntries = async (): Promise<JournalEntry[]> => {
   return await db.getAll(JOURNAL_STORE);
 };
 
+export const getLatestJournalEntries = async (limit: number): Promise<JournalEntry[]> => {
+  const db = await initDB();
+  const allEntries = await db.getAll(JOURNAL_STORE);
+  return allEntries
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, limit);
+};
+
 export const deleteJournalEntry = async (id: string) => {
   const db = await initDB();
   await db.delete(JOURNAL_STORE, id);
+  dispatchUpdate();
 };

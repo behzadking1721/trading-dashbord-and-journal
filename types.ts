@@ -53,3 +53,11 @@ export interface JournalEntry {
     postTradeThoughts: string;
     status: 'Win' | 'Loss' | 'Breakeven';
 }
+
+export interface OHLCData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}

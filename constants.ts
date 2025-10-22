@@ -1,4 +1,3 @@
-
 import type { Layouts } from 'react-grid-layout';
 
 export const initialLayouts: Layouts = {
@@ -38,12 +37,15 @@ export const initialLayouts: Layouts = {
     { i: 'economic_calendar', x: 0, y: 43, w: 10, h: 6 },
   ],
   sm: [
-    // Single column layout for small screens
+    // Single column layout for small screens, more widgets included
     { i: 'price_chart', x: 0, y: 0, w: 6, h: 10 },
-    { i: 'forex_news', x: 0, y: 10, w: 6, h: 8 },
-    { i: 'sessions_clock', x: 0, y: 18, w: 6, h: 8 },
+    { i: 'wallet_overview', x: 0, y: 10, w: 6, h: 7 },
+    { i: 'performance_analytics', x: 0, y: 17, w: 6, h: 9 },
     { i: 'trades_table', x: 0, y: 26, w: 6, h: 10 },
-    { i: 'performance_analytics', x: 0, y: 36, w: 6, h: 9 },
-    { i: 'risk_management', x: 0, y: 45, w: 6, h: 9 },
+    { i: 'forex_news', x: 0, y: 36, w: 6, h: 8 },
+    { i: 'sessions_clock', x: 0, y: 44, w: 6, h: 8 },
+    { i: 'risk_management', x: 0, y: 52, w: 6, h: 9 },
+    { i: 'trading_checklist', x: 0, y: 61, w: 6, h: 8 },
+    { i: 'economic_calendar', x: 0, y: 69, w: 6, h: 8 },
   ],
 };

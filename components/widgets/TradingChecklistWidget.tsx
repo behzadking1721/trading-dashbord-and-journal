@@ -1,23 +1,42 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ChecklistItem } from '../../types';
 
 const INITIAL_ITEMS: ChecklistItem[] = [
-  { id: '1', text: 'بررسی اخبار High-impact', completed: true },
-  { id: '2', text: 'تحلیل تایم‌فریم بالاتر', completed: true },
+  { id: '1', text: 'بررسی اخبار High-impact', completed: false },
+  { id: '2', text: 'تحلیل تایم‌فریم بالاتر', completed: false },
   { id: '3', text: 'تعیین حد ضرر', completed: false },
   { id: '4', text: 'نسبت R/R بزرگتر از 1.5', completed: false },
   { id: '5', text: 'حجم مطابق با مدیریت ریسک', completed: false },
 ];
 
+const STORAGE_KEY = 'trading-checklist-state';
+
 const TradingChecklistWidget: React.FC = () => {
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [items, setItems] = useState<ChecklistItem[]>(() => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        return JSON.parse(savedState);
+      }
+    } catch (error) {
+      console.error("Failed to load checklist from localStorage", error);
+    }
+    return INITIAL_ITEMS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (error) {
+      console.error("Failed to save checklist to localStorage", error);
+    }
+  }, [items]);
 
   const toggleItem = (id: string) => {
     setItems(items.map(item => item.id === id ? { ...item, completed: !item.completed } : item));
   };
   
-  const completionPercentage = (items.filter(i => i.completed).length / items.length) * 100;
+  const completionPercentage = items.length > 0 ? (items.filter(i => i.completed).length / items.length) * 100 : 0;
 
   return (
     <div className="space-y-3">
