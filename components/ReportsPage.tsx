@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
-import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain } from 'lucide-react';
+import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle } from 'lucide-react';
 
 type PerformanceByGroup = {
     [key: string]: {
@@ -12,6 +12,26 @@ type PerformanceByGroup = {
 }
 
 type TimeFilter = 'all' | '7d' | '30d' | '90d';
+
+const SummaryCard: React.FC<{ title: string; value: string; icon: React.ElementType; colorClass?: string; }> = ({ title, value, icon: Icon, colorClass = 'text-gray-800 dark:text-gray-200' }) => (
+    <div className="p-4 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-start">
+            <h3 className="font-semibold text-sm text-gray-500 dark:text-gray-400">{title}</h3>
+            <Icon className={`w-5 h-5 ${colorClass}`} />
+        </div>
+        <p className={`text-2xl font-bold mt-2 ${colorClass}`}>{value}</p>
+    </div>
+);
+
+const SummarySkeletonCard = () => (
+    <div className="p-4 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 animate-pulse">
+        <div className="flex justify-between items-start">
+            <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/5"></div>
+            <div className="h-5 w-5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        </div>
+        <div className="h-7 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mt-3"></div>
+    </div>
+);
 
 const AnalysisCard: React.FC<{ title: string; icon: React.ElementType; children: React.ReactNode; isLoading: boolean }> = ({ title, icon: Icon, children, isLoading }) => (
     <div className="p-4 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 min-h-[200px]">
@@ -99,7 +119,8 @@ const ReportsPage: React.FC = () => {
             } catch (error) {
                 console.error("Failed to load entries for reports:", error);
             } finally {
-                setLoading(false);
+                // Add a small delay to better show skeleton
+                setTimeout(() => setLoading(false), 300);
             }
         };
         window.addEventListener('journalUpdated', loadData);
@@ -111,7 +132,7 @@ const ReportsPage: React.FC = () => {
         if (timeFilter === 'all') return allEntries;
         const now = new Date();
         const daysToSubtract = { '7d': 7, '30d': 30, '90d': 90 }[timeFilter];
-        const filterDate = new Date(now.setDate(now.getDate() - daysToSubtract));
+        const filterDate = new Date(new Date().setDate(now.getDate() - daysToSubtract));
         return allEntries.filter(entry => new Date(entry.date) >= filterDate);
     }, [allEntries, timeFilter]);
     
@@ -146,6 +167,30 @@ const ReportsPage: React.FC = () => {
         return result;
     };
 
+    const summaryStats = useMemo(() => {
+        if (filteredEntries.length === 0) return null;
+
+        const winningTrades = filteredEntries.filter(e => e.profitOrLoss > 0);
+        const losingTrades = filteredEntries.filter(e => e.profitOrLoss < 0);
+
+        const bestTrade = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.profitOrLoss)) : 0;
+        const worstTrade = losingTrades.length > 0 ? Math.min(...losingTrades.map(t => t.profitOrLoss)) : 0;
+
+        const totalWinPnl = winningTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
+        const totalLossPnl = losingTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
+
+        const avgWin = winningTrades.length > 0 ? totalWinPnl / winningTrades.length : 0;
+        const avgLoss = losingTrades.length > 0 ? totalLossPnl / losingTrades.length : 0;
+
+        return {
+            bestTrade, worstTrade, avgWin, avgLoss,
+            winningTradesCount: winningTrades.length,
+            losingTradesCount: losingTrades.length,
+            longPositionsCount: filteredEntries.filter(t => t.side === 'Buy').length,
+            shortPositionsCount: filteredEntries.filter(t => t.side === 'Sell').length,
+        };
+    }, [filteredEntries]);
+
     const performanceBySetup = useMemo(() => calculatePerformanceByGroup('setupName'), [filteredEntries]);
     const performanceBySymbol = useMemo(() => calculatePerformanceByGroup('symbol'), [filteredEntries]);
     
@@ -179,10 +224,6 @@ const ReportsPage: React.FC = () => {
         return data;
     }, [filteredEntries]);
 
-    if (loading) {
-        return <div className="w-full h-screen flex items-center justify-center"><RefreshCw className="w-10 h-10 animate-spin text-indigo-500" /></div>;
-    }
-
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
@@ -199,6 +240,27 @@ const ReportsPage: React.FC = () => {
                             {{'all': 'همه', '90d': '۹۰ روز', '30d': '۳۰ روز', '7d': '۷ روز'}[filter]}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Performance Summary Section */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold">خلاصه عملکرد</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {loading ? (
+                        [...Array(8)].map((_, i) => <SummarySkeletonCard key={i} />)
+                    ) : summaryStats ? (
+                        <>
+                            <SummaryCard title="بهترین معامله" value={`$${summaryStats.bestTrade.toFixed(2)}`} icon={Trophy} colorClass="text-green-500" />
+                            <SummaryCard title="بدترین معامله" value={`$${summaryStats.worstTrade.toFixed(2)}`} icon={AlertTriangle} colorClass="text-red-500" />
+                            <SummaryCard title="میانگین سود" value={`$${summaryStats.avgWin.toFixed(2)}`} icon={TrendingUp} colorClass="text-green-500" />
+                            <SummaryCard title="میانگین ضرر" value={`$${summaryStats.avgLoss.toFixed(2)}`} icon={TrendingDown} colorClass="text-red-500" />
+                            <SummaryCard title="معاملات برنده" value={`${summaryStats.winningTradesCount}`} icon={CheckCircle} colorClass="text-blue-500" />
+                            <SummaryCard title="معاملات بازنده" value={`${summaryStats.losingTradesCount}`} icon={XCircle} colorClass="text-orange-500" />
+                            <SummaryCard title="معاملات خرید" value={`${summaryStats.longPositionsCount}`} icon={ArrowUp} />
+                            <SummaryCard title="معاملات فروش" value={`${summaryStats.shortPositionsCount}`} icon={ArrowDown} />
+                        </>
+                    ) : null }
                 </div>
             </div>
 

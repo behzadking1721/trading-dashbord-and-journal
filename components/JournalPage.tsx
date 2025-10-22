@@ -345,7 +345,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                         <span><strong className="ml-1">R/R:</strong>{calculations.rr}</span>
                         <span><strong className="ml-1">ریسک:</strong>{calculations.riskPercent}</span>
                         <span className={effectiveSide === 'Buy' ? 'text-green-500' : 'text-red-500'}><strong className="ml-1 text-gray-800 dark:text-gray-200">PnL:</strong>{calculations.potentialPnl}</span>
-                        {!calculations.isValid && detectedSide && <AlertTriangle size={16} className="text-red-500" title="مقادیر نامعتبر"/>}
+                        {/* FIX: Wrapped the AlertTriangle icon in a span with a title attribute to provide a tooltip, as the icon component itself doesn't accept a 'title' prop. */}
+                        {!calculations.isValid && detectedSide && <span title="مقادیر نامعتبر"><AlertTriangle size={16} className="text-red-500" /></span>}
                     </div>
 
                     <div className="p-6 space-y-4 overflow-y-auto">
