@@ -1,13 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import type { EconomicEvent, NewsAlert } from '../../types';
-import { Pin, Bell, Flame } from 'lucide-react';
+import { Pin, Bell, Flame, CalendarPlus, Check } from 'lucide-react';
 import { addAlert } from '../../db';
 import { useNotification } from '../../contexts/NotificationContext';
+
+// --- CALENDAR HELPERS ---
+const formatGoogleCalendarDate = (date: Date): string => {
+  return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+};
+
+const generateGoogleCalendarLink = (event: EconomicEvent): string => {
+    const startTime = event.time;
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // Add 30 minutes
+    const details = `Forecast: ${event.forecast || 'N/A'}\nPrevious: ${event.previous || 'N/A'}\n${event.sourceUrl ? `Source: ${event.sourceUrl}` : ''}`;
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `${event.event} (${event.currency})`,
+        dates: `${formatGoogleCalendarDate(startTime)}/${formatGoogleCalendarDate(endTime)}`,
+        details: details,
+        location: `${event.currency} - Importance: ${event.importance}`,
+    });
+    return `https://www.google.com/calendar/render?${params.toString()}`;
+};
+
+const downloadICSFile = (event: EconomicEvent) => {
+    const startTime = event.time;
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // Add 30 minutes
+    const startTimeStr = formatGoogleCalendarDate(startTime);
+    const endTimeStr = formatGoogleCalendarDate(endTime);
+    const nowStr = formatGoogleCalendarDate(new Date());
+
+    const description = `Forecast: ${event.forecast || 'N/A'}\\nPrevious: ${event.previous || 'N/A'}\\n${event.sourceUrl ? `Source: ${event.sourceUrl}` : ''}`;
+
+    const icsContent = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MyTradingDashboard//EN', 'BEGIN:VEVENT',
+        `UID:${event.id}@tradingdashboard.com`, `DTSTAMP:${nowStr}`, `DTSTART:${startTimeStr}`, `DTEND:${endTimeStr}`,
+        `SUMMARY:${event.event} [${event.importance}] (${event.currency})`, `DESCRIPTION:${description}`,
+        'END:VEVENT', 'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${event.event}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 
 // --- MOCK DATA GENERATOR ---
 const generateMockEventsForToday = (): EconomicEvent[] => {
     const events: Omit<EconomicEvent, 'id' | 'time' | 'actual'>[] = [
-      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K' },
+      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K', sourceUrl: 'https://www.bls.gov/news.release/empsit.nr0.htm' },
       { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '' },
       { event: 'Retail Sales m/m', currency: 'GBP', countryCode: 'GB', importance: 'Medium', forecast: '0.5%', previous: '0.2%' },
       { event: 'Unemployment Rate', currency: 'CAD', countryCode: 'CA', importance: 'Low', forecast: '5.8%', previous: '5.8%' },
@@ -25,9 +73,6 @@ const generateMockEventsForToday = (): EconomicEvent[] => {
 };
 // --- END MOCK DATA ---
 
-const COUNTRY_FLAGS: { [key: string]: string } = {
-  US: '🇺🇸', EU: '🇪🇺', GB: '🇬🇧', CA: '🇨🇦', JP: '🇯🇵', AU: '🇦🇺', NZ: '🇳🇿', CH: '🇨🇭', CN: '🇨🇳'
-};
 
 const ImportanceIndicator: React.FC<{ importance: 'High' | 'Medium' | 'Low' }> = ({ importance }) => {
   const styles = {
@@ -62,43 +107,99 @@ const Countdown: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const seconds = Math.floor((difference / 1000) % 60);
 
     const isUrgent = minutesLeft < 5;
-    // The flashing animation will be achieved with the `animate-ping` class.
     const isImminent = minutesLeft < 1;
 
     return (
         <div className="flex flex-col items-end">
-             <span className={`text-sm font-mono tabular-nums transition-colors ${isUrgent ? 'text-red-500 font-bold' : ''}`}>
+             <span className={`text-sm font-mono tabular-nums transition-colors ${isUrgent ? 'text-red-500 font-bold' : ''} ${isImminent ? 'animate-pulse' : ''}`}>
                 {`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
             </span>
-            {isImminent && <span className="absolute h-2 w-2 rounded-full bg-red-500 animate-ping"></span>}
         </div>
     );
 };
+
+const AddToCalendarButton: React.FC<{ event: EconomicEvent; isAdded: boolean; onAdd: (id: string) => void; }> = ({ event, isAdded, onAdd }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleGoogleClick = () => {
+        window.open(generateGoogleCalendarLink(event), '_blank');
+        onAdd(event.id);
+        setIsOpen(false);
+    };
+    
+    const handleIcsClick = () => {
+        downloadICSFile(event);
+        onAdd(event.id);
+        setIsOpen(false);
+    };
+
+    if (isAdded) {
+        return (
+             <button title="به تقویم اضافه شد" className="text-green-500 cursor-default">
+                <Check className="w-4 h-4" />
+            </button>
+        )
+    }
+
+    return (
+        <div className="relative">
+            <button onClick={() => setIsOpen(!isOpen)} title="افزودن به تقویم" className="text-gray-400 hover:text-indigo-500 cursor-pointer">
+                <CalendarPlus className="w-4 h-4" />
+            </button>
+            {isOpen && (
+                <div className="absolute z-10 -left-4 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="py-1">
+                        <a href="#" onClick={(e) => { e.preventDefault(); handleGoogleClick(); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">افزودن به تقویم گوگل</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); handleIcsClick(); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">دانلود فایل ICS</a>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 
 const ForexNewsWidget: React.FC = () => {
     const [events, setEvents] = useState<EconomicEvent[]>([]);
     const { addNotification } = useNotification();
+    const [addedToCalendarIds, setAddedToCalendarIds] = useState<Set<string>>(new Set());
     
     useEffect(() => {
         // Initial load
         const todayEvents = generateMockEventsForToday();
         setEvents(todayEvents);
 
+        // Load added calendar events from localStorage
+        const addedIds = new Set<string>();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('calendar_added_')) {
+                addedIds.add(key.replace('calendar_added_', ''));
+            }
+        }
+        setAddedToCalendarIds(addedIds);
+
         // Simulate live updates
         const interval = setInterval(() => {
             setEvents(prevEvents => prevEvents.map(event => {
                 if (event.time.getTime() <= Date.now() && event.actual === null) {
-                    // When time passes, mark as published.
-                    // A more realistic simulation could provide a random 'Actual' value.
                     return { ...event, actual: 'Simulated' }; 
                 }
                 return event;
             }));
-        }, 30000); // Check every 30 seconds
+        }, 30000);
 
         return () => clearInterval(interval);
     }, []);
+
+     const markAsAddedToCalendar = (eventId: string) => {
+        try {
+            localStorage.setItem(`calendar_added_${eventId}`, 'true');
+            setAddedToCalendarIds(prev => new Set(prev).add(eventId));
+        } catch (e) {
+            console.error("Failed to save to localStorage", e);
+        }
+    };
 
     const handleAddNewsAlert = async (item: EconomicEvent) => {
         const minutesStr = prompt("چند دقیقه قبل از رویداد به شما اطلاع داده شود؟", "5");
@@ -133,13 +234,14 @@ const ForexNewsWidget: React.FC = () => {
                         <ImportanceIndicator importance={item.importance} />
                         <div>
                             <p className="font-semibold truncate flex items-center gap-2">
-                                <span title={item.countryCode}>{COUNTRY_FLAGS[item.countryCode]}</span>
+                                <img src={`https://flagcdn.com/w20/${item.countryCode.toLowerCase()}.png`} alt={item.countryCode} className="w-5 h-auto rounded-sm" />
                                 {item.event}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">{item.currency} | {item.time.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-3 flex-shrink-0">
                             <Countdown targetDate={item.time} />
+                            <AddToCalendarButton event={item} isAdded={addedToCalendarIds.has(item.id)} onAdd={markAsAddedToCalendar} />
                             <button onClick={() => handleAddNewsAlert(item)} title="ایجاد هشدار" className="text-gray-400 hover:text-indigo-500 cursor-pointer">
                                 <Bell className="w-4 h-4" />
                             </button>

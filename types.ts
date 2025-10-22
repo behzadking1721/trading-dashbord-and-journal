@@ -10,6 +10,7 @@ export interface EconomicEvent {
   actual: string | null;
   forecast: string | null;
   previous: string | null;
+  sourceUrl?: string;
 }
 
 

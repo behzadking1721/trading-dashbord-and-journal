@@ -1,20 +1,65 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bell, Pin, Filter, X, Flame, Search } from 'lucide-react';
+import { Bell, Pin, Filter, X, Flame, Search, CalendarPlus, Check } from 'lucide-react';
 import { addAlert } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
 import type { NewsAlert, EconomicEvent } from '../types';
 
-// --- MOCK DATA & HELPERS ---
-const COUNTRY_FLAGS: { [key: string]: string } = {
-  US: '🇺🇸', EU: '🇪🇺', GB: '🇬🇧', CA: '🇨🇦', JP: '🇯🇵', AU: '🇦🇺', NZ: '🇳🇿', CH: '🇨🇭', CN: '🇨🇳'
+
+// --- CALENDAR HELPERS ---
+const formatGoogleCalendarDate = (date: Date): string => {
+  return date.toISOString().replace(/-|:|\.\d{3}/g, '');
 };
 
+const generateGoogleCalendarLink = (event: EconomicEvent): string => {
+    const startTime = event.time;
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // Add 30 minutes
+    const details = `Forecast: ${event.forecast || 'N/A'}\nPrevious: ${event.previous || 'N/A'}\n${event.sourceUrl ? `Source: ${event.sourceUrl}` : ''}`;
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `${event.event} (${event.currency})`,
+        dates: `${formatGoogleCalendarDate(startTime)}/${formatGoogleCalendarDate(endTime)}`,
+        details: details,
+        location: `${event.currency} - Importance: ${event.importance}`,
+    });
+    return `https://www.google.com/calendar/render?${params.toString()}`;
+};
+
+const downloadICSFile = (event: EconomicEvent) => {
+    const startTime = event.time;
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000); // Add 30 minutes
+    const startTimeStr = formatGoogleCalendarDate(startTime);
+    const endTimeStr = formatGoogleCalendarDate(endTime);
+    const nowStr = formatGoogleCalendarDate(new Date());
+
+    const description = `Forecast: ${event.forecast || 'N/A'}\\nPrevious: ${event.previous || 'N/A'}\\n${event.sourceUrl ? `Source: ${event.sourceUrl}` : ''}`;
+
+    const icsContent = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MyTradingDashboard//EN', 'BEGIN:VEVENT',
+        `UID:${event.id}@tradingdashboard.com`, `DTSTAMP:${nowStr}`, `DTSTART:${startTimeStr}`, `DTEND:${endTimeStr}`,
+        `SUMMARY:${event.event} [${event.importance}] (${event.currency})`, `DESCRIPTION:${description}`,
+        'END:VEVENT', 'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${event.event}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+
+// --- MOCK DATA & HELPERS ---
 const ALL_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'NZD', 'CHF', 'CNY'];
 const ALL_IMPORTANCES: EconomicEvent['importance'][] = ['High', 'Medium', 'Low'];
 
 const generateMockEvents = (timeframe: 'today' | 'week'): EconomicEvent[] => {
     const events: Omit<EconomicEvent, 'id' | 'time' | 'actual'>[] = [
-      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K' },
+      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K', sourceUrl: 'https://www.bls.gov/news.release/empsit.nr0.htm' },
       { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '' },
       { event: 'Retail Sales m/m', currency: 'GBP', countryCode: 'GB', importance: 'Medium', forecast: '0.5%', previous: '0.2%' },
       { event: 'Unemployment Rate', currency: 'CAD', countryCode: 'CA', importance: 'Low', forecast: '5.8%', previous: '5.8%' },
@@ -28,14 +73,12 @@ const generateMockEvents = (timeframe: 'today' | 'week'): EconomicEvent[] => {
     const days = timeframe === 'today' ? 1 : 7;
     for (let i = 0; i < days; i++) {
         for (const [index, e] of events.entries()) {
-             // Stagger events throughout the day
              const eventTime = new Date();
              eventTime.setDate(eventTime.getDate() + i);
              eventTime.setHours(Math.floor(Math.random() * 16) + 2, Math.floor(Math.random() * 60), 0, 0);
 
-             // Only add future events for today
              if(i === 0 && eventTime.getTime() < Date.now()) {
-                 eventTime.setTime(Date.now() + (Math.random() * 8 * 60 + 5) * 60 * 1000); // in the next 8 hours
+                 eventTime.setTime(Date.now() + (Math.random() * 8 * 60 + 5) * 60 * 1000);
              }
             
              results.push({
@@ -58,7 +101,7 @@ const ImportanceIndicator: React.FC<{ importance: EconomicEvent['importance'] }>
     };
     const style = styles[importance];
     return (
-        <div className="flex items-center gap-2 w-24" title={`اهمیت: ${style.label}`}>
+        <div className="flex items-center gap-2" title={`اهمیت: ${style.label}`}>
             <span className={`w-3 h-3 rounded-full ${style.color}`}></span>
             <span className={`font-semibold text-sm ${style.text}`}>{style.label}</span>
             {style.icon}
@@ -89,8 +132,7 @@ const Countdown: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
     const isImminent = minutesLeft < 1;
 
     return (
-        <span className={`text-sm font-mono tabular-nums transition-colors relative ${isUrgent ? 'text-red-500 font-bold' : ''}`}>
-            {isImminent && <span className="absolute left-[-10px] top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-red-500 animate-ping"></span>}
+        <span className={`text-sm font-mono tabular-nums transition-colors relative ${isUrgent ? 'text-red-500 font-bold' : ''} ${isImminent ? 'animate-pulse' : ''}`}>
             {`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
         </span>
     );
@@ -99,14 +141,14 @@ const Countdown: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
 const SkeletonLoader: React.FC = () => (
     <div className="animate-pulse space-y-3">
         {[...Array(5)].map((_, i) => (
-             <div key={i} className="grid grid-cols-[120px_100px_100px_1fr_200px_100px_80px] gap-4 items-center p-3">
+             <div key={i} className="grid grid-cols-[120px_100px_1fr_100px_200px_100px_100px] gap-4 items-center p-3">
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div>
                 <div className="flex items-center gap-2">
                     <div className="h-6 w-6 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
                     <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-10"></div>
                 </div>
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div>
+                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div>
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
             </div>
@@ -114,24 +156,72 @@ const SkeletonLoader: React.FC = () => (
     </div>
 );
 
+const AddToCalendarButton: React.FC<{ event: EconomicEvent; isAdded: boolean; onAdd: (id: string) => void; }> = ({ event, isAdded, onAdd }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleGoogleClick = () => {
+        window.open(generateGoogleCalendarLink(event), '_blank');
+        onAdd(event.id);
+        setIsOpen(false);
+    };
+    
+    const handleIcsClick = () => {
+        downloadICSFile(event);
+        onAdd(event.id);
+        setIsOpen(false);
+    };
+
+    if (isAdded) {
+        return (
+            <button title="به تقویم اضافه شد" className="p-2 text-green-500 cursor-default">
+                <Check size={16} />
+            </button>
+        )
+    }
+
+    return (
+        <div className="relative">
+            <button onClick={() => setIsOpen(!isOpen)} title="افزودن به تقویم" className="p-2 text-gray-400 hover:text-indigo-500">
+                <CalendarPlus size={16} />
+            </button>
+            {isOpen && (
+                <div className="absolute z-10 left-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="py-1">
+                        <a href="#" onClick={(e) => { e.preventDefault(); handleGoogleClick(); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">افزودن به تقویم گوگل</a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); handleIcsClick(); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">دانلود فایل ICS</a>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 
 const CalendarPage: React.FC = () => {
     const [allEvents, setAllEvents] = useState<EconomicEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const { addNotification } = useNotification();
     
-    // Filters State
     const [timeFilter, setTimeFilter] = useState<'today' | 'week'>('today');
     const [importanceFilter, setImportanceFilter] = useState<EconomicEvent['importance'][]>([]);
     const [currencyFilter, setCurrencyFilter] = useState<string[]>([]);
     const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+    const [addedToCalendarIds, setAddedToCalendarIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         setLoading(true);
         const events = generateMockEvents(timeFilter);
         setAllEvents(events);
-        // Simulate network delay
         setTimeout(() => setLoading(false), 500);
+
+        const addedIds = new Set<string>();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('calendar_added_')) {
+                addedIds.add(key.replace('calendar_added_', ''));
+            }
+        }
+        setAddedToCalendarIds(addedIds);
 
         const interval = setInterval(() => {
             setAllEvents(prevEvents => prevEvents.map(event => {
@@ -170,6 +260,17 @@ const CalendarPage: React.FC = () => {
         setPinnedIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
     };
 
+    const markAsAddedToCalendar = (eventId: string) => {
+        try {
+            localStorage.setItem(`calendar_added_${eventId}`, 'true');
+            setAddedToCalendarIds(prev => new Set(prev).add(eventId));
+            addNotification("رویداد به تقویم شما اضافه شد.", "success");
+        } catch (e) {
+            console.error("Failed to save to localStorage", e);
+            addNotification("خطا در ذخیره وضعیت تقویم.", "error");
+        }
+    };
+
     const handleAddNewsAlert = async (item: EconomicEvent) => {
         const minutesStr = prompt("چند دقیقه قبل از رویداد به شما اطلاع داده شود؟", "5");
         if (minutesStr) {
@@ -189,14 +290,14 @@ const CalendarPage: React.FC = () => {
     };
     
     const EventRow: React.FC<{ event: EconomicEvent, isPinned: boolean }> = ({ event, isPinned }) => (
-         <div className={`grid grid-cols-[120px_100px_100px_1fr_200px_100px_80px] gap-4 items-center p-3 text-sm border-b dark:border-gray-700 ${isPinned ? 'bg-indigo-500/10' : ''}`}>
+         <div className={`grid grid-cols-[120px_100px_1fr_100px_200px_100px_100px] gap-4 items-center p-3 text-sm border-b dark:border-gray-700 ${isPinned ? 'bg-indigo-500/10' : ''}`}>
             <div className="font-semibold">{event.time.toLocaleDateString('fa-IR', { month: 'long', day: 'numeric'})}, {event.time.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</div>
             <div className="flex items-center gap-2 font-bold">
-                <span title={event.countryCode}>{COUNTRY_FLAGS[event.countryCode]}</span>
+                <img src={`https://flagcdn.com/w40/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-6 h-auto rounded-sm" />
                 {event.currency}
             </div>
-             <ImportanceIndicator importance={event.importance} />
             <p className="font-semibold">{event.event}</p>
+            <ImportanceIndicator importance={event.importance} />
             <div className="grid grid-cols-3 gap-2 text-center font-mono">
                 <span className={event.actual ? 'font-bold' : 'text-gray-500'}>{event.actual ?? '...'}</span>
                 <span className="text-gray-500">{event.forecast ?? '-'}</span>
@@ -205,9 +306,10 @@ const CalendarPage: React.FC = () => {
             <div className="text-center">
                 <Countdown targetDate={event.time} />
             </div>
-            <div className="flex items-center gap-2 justify-end">
-                <button onClick={() => handleAddNewsAlert(event)} title="ایجاد هشدار" className="text-gray-400 hover:text-indigo-500"><Bell size={16} /></button>
-                <button onClick={() => handlePinToggle(event.id)} title="پین کردن" className={`hover:text-yellow-500 ${isPinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin size={16} /></button>
+            <div className="flex items-center gap-1 justify-end">
+                <AddToCalendarButton event={event} isAdded={addedToCalendarIds.has(event.id)} onAdd={markAsAddedToCalendar} />
+                <button onClick={() => handleAddNewsAlert(event)} title="ایجاد هشدار" className="p-2 text-gray-400 hover:text-indigo-500"><Bell size={16} /></button>
+                <button onClick={() => handlePinToggle(event.id)} title="پین کردن" className={`p-2 hover:text-yellow-500 ${isPinned ? 'text-yellow-500' : 'text-gray-400'}`}><Pin size={16} /></button>
             </div>
         </div>
     );
@@ -216,7 +318,6 @@ const CalendarPage: React.FC = () => {
         <div className="p-6 space-y-6">
             <h1 className="text-2xl font-bold">تقویم اقتصادی</h1>
             
-            {/* Filters */}
             <div className="p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border dark:border-gray-700 space-y-4">
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                     <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-200 dark:bg-gray-700">
@@ -238,7 +339,7 @@ const CalendarPage: React.FC = () => {
                      <div className="flex items-center gap-3">
                         <span className="font-semibold">ارز:</span>
                         <div className="flex items-center gap-1.5">
-                             {ALL_CURRENCIES.slice(0,5).map(curr => ( // Show first 5 for brevity
+                             {ALL_CURRENCIES.slice(0,5).map(curr => (
                                 <label key={curr} className="flex items-center gap-1 cursor-pointer">
                                     <input type="checkbox" checked={currencyFilter.includes(curr)} onChange={() => setCurrencyFilter(prev => prev.includes(curr) ? prev.filter(c => c !== curr) : [...prev, curr])} className="rounded" />
                                     {curr}
@@ -249,13 +350,12 @@ const CalendarPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Calendar Table */}
             <div className="rounded-lg shadow-md border dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden">
-                <div className="grid grid-cols-[120px_100px_100px_1fr_200px_100px_80px] gap-4 items-center p-3 text-xs uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                <div className="grid grid-cols-[120px_100px_1fr_100px_200px_100px_100px] gap-4 items-center p-3 text-xs uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                     <span>زمان</span>
                     <span>ارز</span>
-                    <span>اهمیت</span>
                     <span>رویداد</span>
+                    <span>اهمیت</span>
                     <div className="grid grid-cols-3 gap-2 text-center">
                         <span>واقعی</span><span>پیش‌بینی</span><span>قبلی</span>
                     </div>
