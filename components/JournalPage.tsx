@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import type { JournalEntry, TradingSetup } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry } from '../db';
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw } from 'lucide-react';
+
+const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 
 const JournalPage: React.FC = () => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
     
     const loadEntries = useCallback(async () => {
         try {
             const storedEntries = await getJournalEntries();
             setEntries(storedEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        } catch (error) {
-            console.error("Failed to load journal entries from DB:", error);
+        } catch (e) {
+            // FIX: Renamed 'error' to 'e' to avoid potential parsing conflicts that caused cascading 'Cannot find name' errors.
+            console.error("Failed to load journal entries from DB:", e);
         }
     }, []);
 
@@ -25,8 +29,9 @@ const JournalPage: React.FC = () => {
             try {
                 await deleteJournalEntry(id);
                 await loadEntries(); 
-            } catch (error) {
-                console.error("Failed to delete journal entry:", error);
+            } catch (e) {
+                // FIX: Renamed 'error' to 'e' to maintain consistency and avoid potential parsing issues.
+                console.error("Failed to delete journal entry:", e);
                 alert("خطا در حذف معامله. لطفا دوباره تلاش کنید.");
             }
         }
@@ -46,10 +51,16 @@ const JournalPage: React.FC = () => {
         <div className="p-6 h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">ژورنال معاملات</h1>
-                <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors">
-                    <Plus size={18} />
-                    <span>ثبت معامله جدید</span>
-                </button>
+                <div className="flex items-center gap-2">
+                     <button onClick={() => setIsAnalysisModalOpen(true)} className="flex items-center gap-2 bg-teal-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-teal-600 transition-colors">
+                        <Sparkles size={18} />
+                        <span>تحلیل با هوش مصنوعی</span>
+                    </button>
+                    <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors">
+                        <Plus size={18} />
+                        <span>ثبت معامله جدید</span>
+                    </button>
+                </div>
             </div>
 
             <div className="flex-grow overflow-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
@@ -98,6 +109,19 @@ const JournalPage: React.FC = () => {
             </div>
 
             {isModalOpen && <JournalFormModal onClose={() => setIsModalOpen(false)} onSave={handleSave} />}
+            {isAnalysisModalOpen && (
+                 <Suspense fallback={
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                         <RefreshCw className="w-10 h-10 animate-spin text-white" />
+                    </div>
+                 }>
+                    <AIAnalysisModal 
+                        isOpen={isAnalysisModalOpen} 
+                        onClose={() => setIsAnalysisModalOpen(false)} 
+                        entries={entries} 
+                    />
+                </Suspense>
+            )}
         </div>
     );
 };
@@ -170,8 +194,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
             await addJournalEntry(newEntry);
             onSave();
             onClose();
-        } catch (error) {
-            console.error("Failed to save journal entry:", error);
+        } catch (e) {
+            console.error("Failed to save journal entry:", e);
             alert("خطا در ذخیره معامله. لطفا دوباره تلاش کنید.");
         }
     };

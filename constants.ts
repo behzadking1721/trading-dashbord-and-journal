@@ -1,3 +1,4 @@
+import React from 'react';
 import { lazy } from 'react';
 import type { Layouts } from 'react-grid-layout';
 import {

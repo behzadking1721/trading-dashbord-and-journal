@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard } from 'lucide-react';
-import type { TradingSetup, TradingChecklistItem, WidgetVisibility } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download } from 'lucide-react';
+import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry } from '../types';
 import { WIDGET_DEFINITIONS } from '../constants';
+import { getJournalEntries, addJournalEntry } from '../db';
 
 
 const STORAGE_KEY_SETUPS = 'trading-setups';
@@ -19,6 +20,9 @@ const SettingsPage: React.FC = () => {
 
     // State for Widget Management
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
+    
+    // Ref for file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         try {
@@ -96,6 +100,123 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    // --- Data Management Functions ---
+    const handleExport = async () => {
+        try {
+            const entries = await getJournalEntries();
+            if (entries.length === 0) {
+                alert('هیچ معامله‌ای برای خروجی گرفتن وجود ندارد.');
+                return;
+            }
+
+            const headers = Object.keys(entries[0]);
+            const csvRows = [headers.join(',')];
+
+            for (const entry of entries) {
+                const values = headers.map(header => {
+                    const key = header as keyof JournalEntry;
+                    let value = entry[key];
+                    if (Array.isArray(value)) {
+                        return `"${value.join(';')}"`;
+                    }
+                    if (typeof value === 'string') {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                });
+                csvRows.push(values.join(','));
+            }
+
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `trading-journal-export-${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to export journal:", error);
+            alert("خطا در خروجی گرفتن از ژورنال.");
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target?.result as string;
+            if (!text) {
+                alert('فایل خالی است یا قابل خواندن نیست.');
+                return;
+            }
+
+            try {
+                const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+                if (rows.length < 2) {
+                    alert('فایل CSV باید حداقل شامل یک هدر و یک ردیف داده باشد.');
+                    return;
+                }
+
+                const headers = rows[0].trim().split(',');
+                let importedCount = 0;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const values = rows[i].trim().split(','); // Note: This is a simple parser
+                    const entryObj: { [key: string]: any } = {};
+                    headers.forEach((header, index) => {
+                         const value = values[index];
+                         if (value?.startsWith('"') && value.endsWith('"')) {
+                            entryObj[header] = value.substring(1, value.length - 1).replace(/""/g, '"');
+                         } else {
+                            entryObj[header] = value;
+                         }
+                    });
+
+                    // Type conversion and validation
+                     if (!entryObj.id || !entryObj.date || !entryObj.symbol) {
+                        console.warn('Skipping invalid entry:', entryObj);
+                        continue;
+                    }
+
+                    const typedEntry: JournalEntry = {
+                        ...entryObj as any,
+                        entryPrice: parseFloat(entryObj.entryPrice),
+                        exitPrice: parseFloat(entryObj.exitPrice),
+                        stopLoss: parseFloat(entryObj.stopLoss),
+                        takeProfit: parseFloat(entryObj.takeProfit),
+                        positionSize: parseFloat(entryObj.positionSize),
+                        riskRewardRatio: parseFloat(entryObj.riskRewardRatio),
+                        profitOrLoss: parseFloat(entryObj.profitOrLoss),
+                        emotions: entryObj.emotions?.split(';') || [],
+                        mistakes: entryObj.mistakes?.split(';') || [],
+                    };
+                    
+                    await addJournalEntry(typedEntry);
+                    importedCount++;
+                }
+                alert(`${importedCount} معامله با موفقیت وارد شد.`);
+            } catch (err) {
+                console.error("Error importing CSV:", err);
+                alert('خطا در پردازش فایل CSV. لطفاً از فرمت صحیح فایل اطمینان حاصل کنید.');
+            } finally {
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+
     return (
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-6">تنظیمات</h1>
@@ -148,6 +269,31 @@ const SettingsPage: React.FC = () => {
 
                 {/* Column 2 */}
                 <div className="space-y-6">
+                     {/* Data Management Card */}
+                    <div className="p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Database size={20}/> مدیریت داده‌ها</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            از داده‌های ژورنال خود خروجی CSV بگیرید یا یک فایل پشتیبان را وارد کنید.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors">
+                                <Download size={18} />
+                                <span>خروجی گرفتن (CSV)</span>
+                            </button>
+                            <button onClick={handleImportClick} className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition-colors">
+                                <Upload size={18} />
+                                <span>وارد کردن (CSV)</span>
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImportFile}
+                                className="hidden"
+                                accept=".csv"
+                            />
+                        </div>
+                    </div>
+
                     {/* Trading Setups Card */}
                     <div className="p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
                          <div className="flex justify-between items-center mb-4">
@@ -215,7 +361,7 @@ const SetupFormModal: React.FC<{setup: TradingSetup, onSave: (setup: TradingSetu
                            ))}
                         </div>
                         <div className="flex gap-2 mt-2">
-                             <input type="text" value={newItemText} onChange={e => setNewItemText(e.target.value)} placeholder="آیتم جدید چک‌لیست" className="flex-grow p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                             <input type="text" value={newItemText} onChange={e => setNewItemText(e.target.value)} placeholder="آیتم جدید چک‌لیست" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
                              <button type="button" onClick={handleAddItem} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">افزودن</button>
                         </div>
                     </div>
