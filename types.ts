@@ -22,6 +22,9 @@ export interface NewsItem {
   importance: 'High' | 'Medium' | 'Low';
   currency: string;
   link: string;
+  actual?: string;
+  forecast?: string;
+  previous?: string;
 }
 
 export interface ChecklistItem {
@@ -37,7 +40,7 @@ export type StoredLayouts = {
 };
 
 export interface JournalEntry {
-    id: string;
+    id:string;
     date: string;
     symbol: string;
     side: 'Buy' | 'Sell';
@@ -60,4 +63,19 @@ export interface OHLCData {
   high: number;
   low: number;
   close: number;
+}
+
+// New types for Trading Setups
+export interface TradingChecklistItem {
+    id: string;
+    text: string;
+}
+
+export interface TradingSetup {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    checklist: TradingChecklistItem[];
+    isActive: boolean;
 }

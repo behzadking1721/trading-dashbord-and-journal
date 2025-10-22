@@ -10,7 +10,7 @@ const ProgressBar: React.FC<{ value: number }> = ({ value }) => {
 
     return (
         <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div className={`${color} h-2.5 rounded-full`} style={{ width: `${value}%` }}></div>
+            <div className={`${color} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${value}%` }}></div>
         </div>
     );
 };
@@ -22,9 +22,11 @@ const RiskManagementWidget: React.FC = () => {
     const riskLevel = (totalRiskPercent / maxAllowedRisk) * 100;
     
     const [distribution, setDistribution] = useState<{name: string, value: number, color: string}[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchSymbolData = async () => {
+            setLoading(true);
             try {
                 const entries = await getLatestJournalEntries(10);
                 if (entries.length === 0) {
@@ -48,16 +50,27 @@ const RiskManagementWidget: React.FC = () => {
 
             } catch (error) {
                 console.error("Failed to fetch symbol distribution data", error);
+            } finally {
+                setLoading(false);
             }
         };
+        
+        window.addEventListener('journalUpdated', fetchSymbolData);
         fetchSymbolData();
+        
+        return () => {
+            window.removeEventListener('journalUpdated', fetchSymbolData);
+        }
     }, []);
 
   return (
     <div className="space-y-6">
         <div>
             <div className="flex justify-between items-center mb-1">
-                <h4 className="text-sm font-semibold">مجموع ریسک فعال</h4>
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <ShieldAlert size={16} className="text-yellow-500"/>
+                    مجموع ریسک فعال
+                </h4>
                 <span className="text-lg font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
             </div>
             <ProgressBar value={riskLevel} />
@@ -66,17 +79,30 @@ const RiskManagementWidget: React.FC = () => {
         
         <div>
             <h4 className="text-sm font-semibold mb-3">توزیع نمادها (۱۰ معامله اخیر)</h4>
-            <div className="flex items-center justify-center text-gray-400">
-                <PieChart className="w-24 h-24" />
-                 <div className="space-y-2 text-xs">
-                    {distribution.length > 0 ? distribution.map(item => (
-                         <div key={item.name} className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}}></span> 
-                            {item.name} ({item.value.toFixed(0)}%)
-                         </div>
-                    )) : <p className="text-xs">داده‌ای برای نمایش وجود ندارد.</p>}
+            {loading ? (
+                 <div className="flex items-center justify-center h-24">
+                    <div className="animate-pulse flex space-x-4">
+                        <div className="rounded-full bg-gray-300 dark:bg-gray-600 h-12 w-12"></div>
+                        <div className="flex-1 space-y-3 py-1">
+                            <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                            <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                            <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="flex items-center justify-center text-gray-400">
+                    <PieChart className="w-24 h-24 min-w-24" />
+                     <div className="space-y-2 text-xs w-full">
+                        {distribution.length > 0 ? distribution.map(item => (
+                             <div key={item.name} className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}}></span> 
+                                {item.name} ({item.value.toFixed(0)}%)
+                             </div>
+                        )) : <p className="text-xs text-center">داده‌ای برای نمایش وجود ندارد.</p>}
+                    </div>
+                </div>
+            )}
         </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getJournalEntries } from '../../db';
+import { Wallet } from 'lucide-react';
 
 const WalletOverviewWidget: React.FC = () => {
     const [balance, setBalance] = useState(0);
@@ -23,16 +24,13 @@ const WalletOverviewWidget: React.FC = () => {
             }
         };
 
-        // Create a listener for when journal entries change to re-calculate equity
-        const handleStorageChange = () => {
-          // This is a simple way to trigger refresh. A more robust solution would use a global state manager.
-          // For now, we listen to settings changes.
-           updateWallet();
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'accountBalance') {
+                updateWallet();
+            }
         };
 
         window.addEventListener('storage', handleStorageChange);
-        
-        // Also listen for a custom event when a journal entry is added/deleted
         window.addEventListener('journalUpdated', updateWallet);
         
         updateWallet();
@@ -48,17 +46,17 @@ const WalletOverviewWidget: React.FC = () => {
     }
 
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-3 text-sm">
         <div className="flex justify-between items-center">
-            <span className="text-gray-500 dark:text-gray-400">موجودی (Balance)</span>
+            <span className="text-gray-500 dark:text-gray-400 flex items-center gap-2"><Wallet size={14}/> موجودی (Balance)</span>
             <span className="font-mono font-semibold">{formatCurrency(balance)}</span>
         </div>
         <div className="flex justify-between items-center">
-            <span className="text-gray-500 dark:text-gray-400">سرمایه (Equity)</span>
+            <span className="text-gray-500 dark:text-gray-400 flex items-center gap-2"><Wallet size={14}/> سرمایه (Equity)</span>
             <span className="font-mono font-semibold">{formatCurrency(equity)}</span>
         </div>
         <div className="flex justify-between items-center">
-            <span className="text-gray-500 dark:text-gray-400">مارجین آزاد</span>
+            <span className="text-gray-500 dark:text-gray-400 flex items-center gap-2"><Wallet size={14}/> مارجین آزاد</span>
             <span className="font-mono font-semibold">{formatCurrency(equity * 0.95)}</span>
         </div>
     </div>

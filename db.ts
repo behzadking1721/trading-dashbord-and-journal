@@ -13,12 +13,10 @@ interface TradingDB extends DBSchema {
   };
 }
 
-let dbPromise: Promise<IDBPDatabase<TradingDB>> | null = null;
-
-const initDB = () => {
-  if (dbPromise) return dbPromise;
-  
-  dbPromise = openDB<TradingDB>(DB_NAME, DB_VERSION, {
+// No more global dbPromise. Each function will open its own connection.
+// idb library handles connection pooling automatically.
+const getDb = () => {
+  return openDB<TradingDB>(DB_NAME, DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(JOURNAL_STORE)) {
         const store = db.createObjectStore(JOURNAL_STORE, { keyPath: 'id' });
@@ -26,8 +24,8 @@ const initDB = () => {
       }
     },
   });
-  return dbPromise;
 };
+
 
 // Dispatch a custom event whenever the journal is updated
 const dispatchUpdate = () => {
@@ -35,26 +33,36 @@ const dispatchUpdate = () => {
 }
 
 export const addJournalEntry = async (entry: JournalEntry) => {
-  const db = await initDB();
+  const db = await getDb();
   await db.put(JOURNAL_STORE, entry);
   dispatchUpdate();
 };
 
 export const getJournalEntries = async (): Promise<JournalEntry[]> => {
-  const db = await initDB();
-  return await db.getAll(JOURNAL_STORE);
+  try {
+    const db = await getDb();
+    return await db.getAll(JOURNAL_STORE);
+  } catch (error) {
+    console.error("Failed to get journal entries:", error);
+    return []; // Return empty array on error to prevent crashes
+  }
 };
 
 export const getLatestJournalEntries = async (limit: number): Promise<JournalEntry[]> => {
-  const db = await initDB();
-  const allEntries = await db.getAll(JOURNAL_STORE);
-  return allEntries
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, limit);
+  try {
+    const db = await getDb();
+    const allEntries = await db.getAll(JOURNAL_STORE);
+    return allEntries
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, limit);
+  } catch (error) {
+    console.error("Failed to get latest journal entries:", error);
+    return [];
+  }
 };
 
 export const deleteJournalEntry = async (id: string) => {
-  const db = await initDB();
+  const db = await getDb();
   await db.delete(JOURNAL_STORE, id);
   dispatchUpdate();
 };
