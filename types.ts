@@ -36,6 +36,7 @@ export interface JournalEntry {
     mistakes?: string[];
     notesBefore?: string;
     notesAfter?: string;
+    imageUrl?: string; // For chart screenshots
 }
 
 export interface OHLCData {
