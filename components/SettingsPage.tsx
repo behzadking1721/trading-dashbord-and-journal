@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell } from 'lucide-react';
-import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings } from '../types';
+import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings } from '../types';
 import { WIDGET_DEFINITIONS } from '../constants';
 import { getJournalEntries, addJournalEntry } from '../db';
 
@@ -8,12 +8,17 @@ import { getJournalEntries, addJournalEntry } from '../db';
 const STORAGE_KEY_SETUPS = 'trading-setups';
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 const STORAGE_KEY_NOTIFICATION_SETTINGS = 'notification-settings';
+const STORAGE_KEY_RISK_SETTINGS = 'risk-management-settings';
 
 
 const SettingsPage: React.FC = () => {
     // State for Risk Management
-    const [maxRiskPerTrade, setMaxRiskPerTrade] = useState('1');
-    const [accountBalance, setAccountBalance] = useState('10000');
+    const [riskSettings, setRiskSettings] = useState<RiskSettings>({
+        accountBalance: 10000,
+        strategy: 'fixed_percent',
+        fixedPercent: { risk: 1 },
+        antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }
+    });
     const [saved, setSaved] = useState(false);
 
     // State for Trading Setups
@@ -36,10 +41,22 @@ const SettingsPage: React.FC = () => {
     useEffect(() => {
         try {
             // Load risk settings
-            const savedRisk = localStorage.getItem('maxRiskPerTrade');
-            const savedBalance = localStorage.getItem('accountBalance');
-            if (savedRisk) setMaxRiskPerTrade(savedRisk);
-            if (savedBalance) setAccountBalance(savedBalance);
+            const savedRisk = localStorage.getItem(STORAGE_KEY_RISK_SETTINGS);
+            if(savedRisk) setRiskSettings(JSON.parse(savedRisk));
+            
+            // Legacy support for old settings
+            if(!savedRisk) {
+                const legacyBalance = localStorage.getItem('accountBalance');
+                const legacyRisk = localStorage.getItem('maxRiskPerTrade');
+                if(legacyBalance || legacyRisk) {
+                    setRiskSettings(prev => ({
+                        ...prev,
+                        accountBalance: legacyBalance ? parseFloat(legacyBalance) : prev.accountBalance,
+                        fixedPercent: { risk: legacyRisk ? parseFloat(legacyRisk) : prev.fixedPercent.risk }
+                    }))
+                }
+            }
+
 
             // Load trading setups
             const savedSetups = localStorage.getItem(STORAGE_KEY_SETUPS);
@@ -70,10 +87,24 @@ const SettingsPage: React.FC = () => {
         }
     }, []);
 
+    const handleRiskSettingsChange = (field: string, value: any) => {
+        const path = field.split('.');
+        setRiskSettings(prev => {
+            const newState = JSON.parse(JSON.stringify(prev)); // Deep copy
+            let current = newState;
+            for(let i = 0; i < path.length - 1; i++){
+                current = current[path[i]];
+            }
+            current[path[path.length - 1]] = value;
+            return newState;
+        });
+    }
+
     const handleSaveRisk = () => {
         try {
-            localStorage.setItem('maxRiskPerTrade', maxRiskPerTrade);
-            localStorage.setItem('accountBalance', accountBalance);
+            localStorage.setItem(STORAGE_KEY_RISK_SETTINGS, JSON.stringify(riskSettings));
+            // For Wallet Widget compatibility
+            localStorage.setItem('accountBalance', riskSettings.accountBalance.toString());
             window.dispatchEvent(new StorageEvent('storage', { key: 'accountBalance' }));
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
@@ -260,13 +291,39 @@ const SettingsPage: React.FC = () => {
                         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><SettingsIcon size={20}/> مدیریت سرمایه و ریسک</h2>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="accountBalance" className="block text-sm font-medium mb-1">موجودی حساب ($)</label>
-                                <input type="number" id="accountBalance" value={accountBalance} onChange={e => setAccountBalance(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" />
+                                <label className="block text-sm font-medium mb-1">موجودی حساب ($)</label>
+                                <input type="number" value={riskSettings.accountBalance} onChange={e => handleRiskSettingsChange('accountBalance', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" />
                             </div>
-                            <div>
-                                <label htmlFor="maxRisk" className="block text-sm font-medium mb-1">حداکثر ریسک در هر معامله (%)</label>
-                                <input type="number" id="maxRisk" value={maxRiskPerTrade} onChange={e => setMaxRiskPerTrade(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" />
+                             <div>
+                                <label className="block text-sm font-medium mb-1">استراتژی مدیریت حجم</label>
+                                <select value={riskSettings.strategy} onChange={e => handleRiskSettingsChange('strategy', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                    <option value="fixed_percent">درصد ثابت</option>
+                                    <option value="anti_martingale">افزایشی (ضد مارتینگل)</option>
+                                </select>
                             </div>
+                            {riskSettings.strategy === 'fixed_percent' && (
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">درصد ریسک در هر معامله (%)</label>
+                                    <input type="number" step="0.1" value={riskSettings.fixedPercent.risk} onChange={e => handleRiskSettingsChange('fixedPercent.risk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" />
+                                </div>
+                            )}
+                             {riskSettings.strategy === 'anti_martingale' && (
+                                <div className="space-y-3 p-3 border rounded-md dark:border-gray-600">
+                                     <h4 className="text-xs font-semibold">تنظیمات استراتژی افزایشی</h4>
+                                    <div>
+                                        <label className="block text-xs font-medium mb-1">درصد ریسک پایه (%)</label>
+                                        <input type="number" step="0.1" value={riskSettings.antiMartingale.baseRisk} onChange={e => handleRiskSettingsChange('antiMartingale.baseRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium mb-1">افزایش ریسک بعد از هر برد (%)</label>
+                                        <input type="number" step="0.1" value={riskSettings.antiMartingale.increment} onChange={e => handleRiskSettingsChange('antiMartingale.increment', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                                    </div>
+                                     <div>
+                                        <label className="block text-xs font-medium mb-1">حداکثر درصد ریسک (%)</label>
+                                        <input type="number" step="0.1" value={riskSettings.antiMartingale.maxRisk} onChange={e => handleRiskSettingsChange('antiMartingale.maxRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4">
                             <button onClick={handleSaveRisk} className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors">

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import type { JournalEntry, TradingSetup } from '../types';
-import { addJournalEntry, getJournalEntries, deleteJournalEntry } from '../db';
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
+import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings } from '../types';
+import { addJournalEntry, getJournalEntries, deleteJournalEntry, getLatestJournalEntries } from '../db';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 
@@ -126,86 +126,145 @@ const JournalPage: React.FC = () => {
     );
 };
 
-const EMOTIONS_LIST = ['منظم', 'مطمئن', 'هیجان‌زده', 'مضطرب', 'ترسو', 'عصبی', 'انتقام‌جو'];
 const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
+const singleEmotionMap: { emoji: string; value: string; color: string; selectedClasses: string }[] = [
+    { emoji: '😊', value: 'مطمئن', color: 'green-500', selectedClasses: 'border-green-500 text-green-500 bg-green-500/10' },
+    { emoji: '😐', value: 'منظم', color: 'blue-500', selectedClasses: 'border-blue-500 text-blue-500 bg-blue-500/10' },
+    { emoji: '😡', value: 'عصبی', color: 'red-500', selectedClasses: 'border-red-500 text-red-500 bg-red-500/10' },
+    { emoji: '😰', value: 'مضطرب', color: 'orange-500', selectedClasses: 'border-orange-500 text-orange-500 bg-orange-500/10' },
+];
+
+interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
+    outcome?: TradeOutcome;
+    manualExitPrice?: number;
+}
+
 
 const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> = ({ onClose, onSave }) => {
-    const [formData, setFormData] = useState<Partial<JournalEntry>>({
-        symbol: '', side: 'Buy', entryPrice: undefined, stopLoss: undefined, takeProfit: undefined, exitPrice: undefined, positionSize: undefined, setupId: '', emotions: [], mistakes: [], notesBefore: '', notesAfter: ''
+    const [formData, setFormData] = useState<FormState>({
+        symbol: '', side: 'Buy', entryPrice: undefined, stopLoss: undefined, takeProfit: undefined, positionSize: undefined, setupId: '', emotions: [], mistakes: [], notesBefore: '', notesAfter: '', outcome: 'Manual Exit', manualExitPrice: undefined,
     });
     const [setups, setSetups] = useState<TradingSetup[]>([]);
+    const [riskSettings, setRiskSettings] = useState<RiskSettings | null>(null);
+    const [lastTrade, setLastTrade] = useState<JournalEntry | null>(null);
+    const PSYCHO_ANALYSIS_LS_KEY = 'journal-form-psycho-analysis-open';
+    const [isPsychoAnalysisOpen, setIsPsychoAnalysisOpen] = useState(() => {
+        try { return localStorage.getItem(PSYCHO_ANALYSIS_LS_KEY) === 'true'; } catch { return false; }
+    });
+
+    const togglePsychoAnalysis = () => {
+        setIsPsychoAnalysisOpen(prev => {
+            const newState = !prev;
+            try { localStorage.setItem(PSYCHO_ANALYSIS_LS_KEY, String(newState)); } catch (e) { console.error(e); }
+            return newState;
+        });
+    };
     
     useEffect(() => {
-        try {
-            const savedSetups = localStorage.getItem('trading-setups');
-            if (savedSetups) {
-                setSetups(JSON.parse(savedSetups));
-            }
-        } catch(e) { console.error(e) }
+        const loadInitialData = async () => {
+            try {
+                // Load setups
+                const savedSetups = localStorage.getItem('trading-setups');
+                if (savedSetups) setSetups(JSON.parse(savedSetups));
+
+                // Load risk settings
+                const savedRiskSettings = localStorage.getItem('risk-management-settings');
+                if (savedRiskSettings) {
+                    setRiskSettings(JSON.parse(savedRiskSettings));
+                } else {
+                    // FIX: Explicitly type `defaultSettings` as `RiskSettings` to ensure `strategy` is correctly typed as a literal.
+                    const defaultSettings: RiskSettings = { accountBalance: 10000, strategy: 'fixed_percent', fixedPercent: { risk: 1 }, antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }};
+                    setRiskSettings(defaultSettings);
+                }
+
+                // Load last trade for anti-martingale
+                const [latestTrade] = await getLatestJournalEntries(1);
+                setLastTrade(latestTrade || null);
+
+            } catch(e) { console.error(e) }
+        };
+        loadInitialData();
     }, []);
+
+    const suggestedPositionSize = useMemo(() => {
+        if (!riskSettings || !formData.entryPrice || !formData.stopLoss) {
+            return null;
+        }
+        const stopDistance = Math.abs(formData.entryPrice - formData.stopLoss);
+        if (stopDistance === 0) return null;
+
+        let riskPercent = riskSettings.fixedPercent.risk;
+
+        if (riskSettings.strategy === 'anti_martingale' && lastTrade) {
+            const { baseRisk, increment, maxRisk } = riskSettings.antiMartingale;
+            if (lastTrade.status === 'Win') {
+                // This logic needs current risk level, which we don't store.
+                // We'll simplify: if last was a win, we increment base risk once.
+                riskPercent = Math.min(baseRisk + increment, maxRisk);
+            } else {
+                riskPercent = baseRisk;
+            }
+        }
+        
+        const riskAmount = riskSettings.accountBalance * (riskPercent / 100);
+        
+        // Assuming standard lot (100,000 units) and a pip value of $10 for a 1 lot trade.
+        // This is a simplification for non-JPY pairs.
+        // position size in lots = risk amount / (stop distance in pips * value per pip)
+        // Let's assume price is like 1.2345, so stop distance is e.g. 0.0020
+        // stop distance in pips = stopDistance * 10000
+        // position_size * 10 = riskAmount / (stopDistance * 10000)
+        // position_size = riskAmount / (stopDistance * 10000 * 10)
+        // Let's use a simpler formula: position_size_in_units = riskAmount / stopDistance
+        // position_size_in_lots = position_size_in_units / 100000
+        const positionSizeInLots = (riskAmount / stopDistance) / 100000;
+
+        return `پیشنهاد: ${positionSizeInLots.toFixed(2)}`;
+
+    }, [formData.entryPrice, formData.stopLoss, riskSettings, lastTrade]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const isNumberField = e.target instanceof HTMLInputElement && e.target.type === 'number';
-
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: isNumberField ? (value === '' ? undefined : parseFloat(value)) : value 
-        }));
+        setFormData(prev => ({ ...prev, [name]: isNumberField ? (value === '' ? undefined : parseFloat(value)) : value }));
     };
 
-    const handleMultiSelect = (name: 'emotions' | 'mistakes', value: string) => {
+    const handleEmotionSelect = (emotionValue: string) => {
+        setFormData(prev => ({ ...prev, emotions: prev.emotions?.includes(emotionValue) ? [] : [emotionValue] }));
+    };
+
+    const handleMultiSelect = (name: 'mistakes', value: string) => {
         const currentValues = formData[name] || [];
-        const newValues = currentValues.includes(value)
-            ? currentValues.filter(v => v !== value)
-            : [...currentValues, value];
+        const newValues = currentValues.includes(value) ? currentValues.filter(v => v !== value) : [...currentValues, value];
         setFormData(prev => ({ ...prev, [name]: newValues }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const { entryPrice, stopLoss, takeProfit, positionSize = 1, side = 'Buy', setupId, outcome, manualExitPrice } = formData;
+        
+        let finalExitPrice: number | undefined;
+        if(outcome === 'Take Profit') finalExitPrice = takeProfit;
+        else if(outcome === 'Stop Loss') finalExitPrice = stopLoss;
+        else if(outcome === 'Manual Exit') finalExitPrice = manualExitPrice;
 
-        const entryPrice = Number(formData.entryPrice);
-        const exitPrice = Number(formData.exitPrice);
-        const stopLoss = Number(formData.stopLoss);
-        const takeProfit = Number(formData.takeProfit);
-        const positionSize = Number(formData.positionSize || 1);
-        const side = formData.side || 'Buy';
-
-        if (isNaN(entryPrice) || isNaN(exitPrice) || isNaN(stopLoss) || isNaN(takeProfit)) {
-             alert('لطفاً تمام قیمت‌ها را به درستی وارد کنید.');
+        if ([entryPrice, stopLoss, takeProfit, finalExitPrice].some(p => p === undefined || isNaN(p))) {
+             alert('لطفاً تمام قیمت‌های ضروری را به درستی وارد کنید.');
              return;
         }
 
-        const pnl = (exitPrice - entryPrice) * positionSize * (side === 'Buy' ? 1 : -1) * 100000; // Simplified PnL
-        const rrDenominator = Math.abs(entryPrice - stopLoss);
-        const riskRewardRatio = rrDenominator > 0 ? Math.abs(takeProfit - entryPrice) / rrDenominator : 0;
-        
-        let status: 'Win' | 'Loss' | 'Breakeven' = 'Breakeven';
-        if (pnl > 0) status = 'Win';
-        if (pnl < 0) status = 'Loss';
-
-        const selectedSetup = setups.find(s => s.id === formData.setupId);
+        const pnl = (finalExitPrice! - entryPrice!) * positionSize * (side === 'Buy' ? 1 : -1) * 100000;
+        const rrDenominator = Math.abs(entryPrice! - stopLoss!);
+        const riskRewardRatio = rrDenominator > 0 ? Math.abs(takeProfit! - entryPrice!) / rrDenominator : 0;
+        const status: 'Win' | 'Loss' | 'Breakeven' = pnl > 0 ? 'Win' : pnl < 0 ? 'Loss' : 'Breakeven';
+        const selectedSetup = setups.find(s => s.id === setupId);
 
         const newEntry: JournalEntry = {
-            id: new Date().toISOString(),
-            date: new Date().toISOString(),
-            symbol: formData.symbol || '',
-            side: side,
-            entryPrice: entryPrice,
-            exitPrice: exitPrice,
-            stopLoss: stopLoss,
-            takeProfit: takeProfit,
-            positionSize: positionSize,
-            profitOrLoss: isNaN(pnl) ? 0 : pnl,
-            status,
-            riskRewardRatio: isFinite(riskRewardRatio) && !isNaN(riskRewardRatio) ? riskRewardRatio : 0,
-            setupId: formData.setupId,
-            setupName: selectedSetup?.name,
-            emotions: formData.emotions || [],
-            mistakes: formData.mistakes || [],
-            notesBefore: formData.notesBefore || '',
-            notesAfter: formData.notesAfter || '',
+            id: new Date().toISOString(), date: new Date().toISOString(), symbol: formData.symbol || '', side,
+            entryPrice: entryPrice!, exitPrice: finalExitPrice!, stopLoss: stopLoss!, takeProfit: takeProfit!, positionSize,
+            profitOrLoss: pnl, status, riskRewardRatio: isFinite(riskRewardRatio) ? riskRewardRatio : 0, setupId,
+            outcome: outcome!, setupName: selectedSetup?.name, emotions: formData.emotions || [], mistakes: formData.mistakes || [],
+            notesBefore: formData.notesBefore || '', notesAfter: formData.notesAfter || '',
         };
         
         try {
@@ -236,40 +295,73 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
                                 <option value="Sell">فروش (Sell)</option>
                             </select>
                             <input type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>
-                            <input type="number" name="exitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.exitPrice === undefined ? '' : formData.exitPrice} onChange={handleChange}/>
                             <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
                             <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>
-                            <input type="number" name="positionSize" step="any" placeholder="حجم معامله" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
+                            
+                             <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome} onChange={handleChange}>
+                                <option value="Manual Exit">خروج دستی</option>
+                                <option value="Take Profit">حد سود</option>
+                                <option value="Stop Loss">حد ضرر</option>
+                            </select>
+
+                            {formData.outcome === 'Manual Exit' && (
+                                <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
+                            )}
+                            <div className="relative">
+                                <input type="number" name="positionSize" step="any" placeholder={suggestedPositionSize || 'حجم (لات)'} className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
+                                {suggestedPositionSize && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{suggestedPositionSize}</span>}
+                            </div>
                         </div>
                     </fieldset>
                     
-                     {/* Psychological Analysis */}
-                    <fieldset className="border p-4 rounded-md dark:border-gray-600">
-                        <legend className="px-2 font-semibold text-sm">تحلیل روانشناسی و استراتژی</legend>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="relative">
-                                <select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded appearance-none dark:bg-gray-700 dark:border-gray-600">
-                                    <option value="">انتخاب ستاپ معاملاتی</option>
-                                    {setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                    {/* Psychological Analysis (Collapsible) */}
+                    <div className="border rounded-md dark:border-gray-600">
+                        <button type="button" onClick={togglePsychoAnalysis} className="flex justify-between items-center w-full p-4 text-right">
+                            <div className="flex items-center gap-2">
+                                <Brain size={18} className="text-indigo-500" />
+                                <span className="font-semibold text-sm">تحلیل روانشناسی و استراتژی (اختیاری)</span>
                             </div>
-                            {/* Simplified multi-select for now */}
-                             <select name="emotions" value={formData.emotions?.[0] || ''} onChange={(e) => setFormData(p => ({...p, emotions: [e.target.value]}))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
-                                <option value="">انتخاب احساسات</option>
-                                {EMOTIONS_LIST.map(e => <option key={e} value={e}>{e}</option>)}
-                            </select>
-                            <select name="mistakes" value={formData.mistakes?.[0] || ''} onChange={(e) => setFormData(p => ({...p, mistakes: [e.target.value]}))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
-                                <option value="">انتخاب اشتباهات</option>
-                                {MISTAKES_LIST.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
+                            <ChevronDown className={`w-5 h-5 transition-transform ${isPsychoAnalysisOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isPsychoAnalysisOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="p-4 border-t dark:border-gray-600 space-y-4">
+                                <div className="relative">
+                                    <label className="block text-sm font-medium mb-2">ستاپ معاملاتی</label>
+                                    <select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded appearance-none dark:bg-gray-700 dark:border-gray-600">
+                                        <option value="">انتخاب ستاپ معاملاتی</option>
+                                        {setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute left-3 top-10 -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">احساسات غالب</label>
+                                    <div className="flex justify-around items-center gap-2">
+                                        {singleEmotionMap.map(emo => (
+                                            <button key={emo.value} type="button" onClick={() => handleEmotionSelect(emo.value)} className={`flex-1 p-2 rounded-lg border-2 transition-all text-center ${formData.emotions?.includes(emo.value) ? emo.selectedClasses : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}`}>
+                                                <span className="text-3xl">{emo.emoji}</span>
+                                                <span className="block text-xs mt-1">{emo.value}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                 <div>
+                                    <label className="block text-sm font-medium mb-2">اشتباهات (در صورت وجود)</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {MISTAKES_LIST.map(mistake => (
+                                            <button key={mistake} type="button" onClick={() => handleMultiSelect('mistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${formData.mistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700 border-transparent hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
+                                                {mistake}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+                                    <textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+                                </div>
+                                <p className="text-xs text-gray-500 text-center pt-2">پر کردن این بخش اختیاری است، اما به شما کمک می‌کند در گزارش‌ها الگوهای روانشناسی و استراتژی خود را بهتر ببینید.</p>
+                            </div>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
-                            <textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                    </fieldset>
-
+                    </div>
                 </form>
                  <div className="flex justify-end gap-3 p-4 mt-auto border-t dark:border-gray-700">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">انصراف</button>

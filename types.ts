@@ -12,6 +12,8 @@ export interface NewsItem {
   previous?: string;
 }
 
+export type TradeOutcome = 'Take Profit' | 'Stop Loss' | 'Manual Exit';
+
 export interface JournalEntry {
     id: string;
     date: string;
@@ -21,6 +23,7 @@ export interface JournalEntry {
     exitPrice: number;
     stopLoss: number;
     takeProfit: number;
+    outcome: TradeOutcome;
     positionSize: number;
     riskRewardRatio: number;
     profitOrLoss: number;
@@ -93,4 +96,17 @@ export interface NotificationSettings {
     globalEnable: boolean;
     priceAlerts: boolean;
     newsAlerts: boolean;
+}
+
+export interface RiskSettings {
+    accountBalance: number;
+    strategy: 'fixed_percent' | 'anti_martingale';
+    fixedPercent: {
+        risk: number;
+    };
+    antiMartingale: {
+        baseRisk: number;
+        increment: number;
+        maxRisk: number;
+    };
 }
