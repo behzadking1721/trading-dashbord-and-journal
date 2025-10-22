@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download } from 'lucide-react';
-import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry } from '../types';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell } from 'lucide-react';
+import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings } from '../types';
 import { WIDGET_DEFINITIONS } from '../constants';
 import { getJournalEntries, addJournalEntry } from '../db';
 
 
 const STORAGE_KEY_SETUPS = 'trading-setups';
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
+const STORAGE_KEY_NOTIFICATION_SETTINGS = 'notification-settings';
+
 
 const SettingsPage: React.FC = () => {
     // State for Risk Management
@@ -21,6 +23,13 @@ const SettingsPage: React.FC = () => {
     // State for Widget Management
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
     
+    // State for Notification settings
+    const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+        globalEnable: true,
+        priceAlerts: true,
+        newsAlerts: true,
+    });
+
     // Ref for file input
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +57,13 @@ const SettingsPage: React.FC = () => {
                 }
             });
             setWidgetVisibility(initialVisibility);
+
+            // Load notification settings
+            const savedNotificationSettings = localStorage.getItem(STORAGE_KEY_NOTIFICATION_SETTINGS);
+            if (savedNotificationSettings) {
+                setNotificationSettings(JSON.parse(savedNotificationSettings));
+            }
+
 
         } catch (error) {
             console.error("Could not access localStorage to get settings:", error);
@@ -97,6 +113,21 @@ const SettingsPage: React.FC = () => {
             window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY_WIDGET_VISIBILITY }));
         } catch (error) {
             console.error("Failed to save widget visibility", error);
+        }
+    };
+    
+    // --- Notification Management Functions ---
+    const handleNotificationSettingChange = (key: keyof NotificationSettings, value: boolean) => {
+        const newSettings = { ...notificationSettings, [key]: value };
+        if (key === 'globalEnable' && !value) {
+            newSettings.priceAlerts = false;
+            newSettings.newsAlerts = false;
+        }
+        setNotificationSettings(newSettings);
+        try {
+            localStorage.setItem(STORAGE_KEY_NOTIFICATION_SETTINGS, JSON.stringify(newSettings));
+        } catch (error) {
+            console.error("Failed to save notification settings", error);
         }
     };
 
@@ -244,6 +275,44 @@ const SettingsPage: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Notification Settings Card */}
+                    <div className="p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Bell size={20}/> مدیریت اعلان‌ها</h2>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-sm">فعال‌سازی کلی اعلان‌ها</p>
+                                    <p className="text-xs text-gray-500">فعال یا غیرفعال کردن تمام هشدارها</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={notificationSettings.globalEnable} onChange={e => handleNotificationSettingChange('globalEnable', e.target.checked)} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                            <div className={`flex items-center justify-between transition-opacity ${!notificationSettings.globalEnable ? 'opacity-50' : ''}`}>
+                                <div>
+                                    <p className="font-semibold text-sm">هشدار قیمت</p>
+                                    <p className="text-xs text-gray-500">اعلان هنگام رسیدن قیمت به سطح مشخص</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={notificationSettings.priceAlerts} onChange={e => handleNotificationSettingChange('priceAlerts', e.target.checked)} disabled={!notificationSettings.globalEnable} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                            <div className={`flex items-center justify-between transition-opacity ${!notificationSettings.globalEnable ? 'opacity-50' : ''}`}>
+                                <div>
+                                    <p className="font-semibold text-sm">هشدار رویدادهای اقتصادی</p>
+                                    <p className="text-xs text-gray-500">یادآوری قبل از اخبار مهم</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={notificationSettings.newsAlerts} onChange={e => handleNotificationSettingChange('newsAlerts', e.target.checked)} disabled={!notificationSettings.globalEnable} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                      {/* Widget Management Card */}
                     <div className="p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
                         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><LayoutDashboard size={20}/> مدیریت ویجت‌های داشبورد</h2>

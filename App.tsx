@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
-import type { Theme, PriceAlert, NewsAlert, AlertStatus } from './types';
+import type { Theme, PriceAlert, NewsAlert, NotificationSettings } from './types';
 import { ThemeContext } from './contexts/ThemeContext';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import Sidebar from './components/Sidebar';
@@ -47,11 +47,22 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
         const checkAlerts = async () => {
+            let settings: NotificationSettings;
+            try {
+                settings = JSON.parse(localStorage.getItem('notification-settings') || 'null') || { globalEnable: true, priceAlerts: true, newsAlerts: true };
+            } catch (e) {
+                settings = { globalEnable: true, priceAlerts: true, newsAlerts: true };
+            }
+
+            if (!settings.globalEnable) {
+                return;
+            }
+            
             const activeAlerts = await getAlerts('active');
             const now = new Date();
 
             for (const alert of activeAlerts) {
-                if (alert.type === 'price') {
+                if (alert.type === 'price' && settings.priceAlerts) {
                     const priceAlert = alert as PriceAlert;
                     const priceInfo = window.currentPrices[priceAlert.symbol];
                     if (!priceInfo || !priceInfo.lastPrice) continue;
@@ -69,7 +80,7 @@ const AppContent: React.FC = () => {
                         addNotification(`هشدار قیمت ${priceAlert.symbol}: از ${priceAlert.targetPrice} عبور کرد.`, 'info');
                         await updateAlertStatus(alert.id, 'triggered');
                     }
-                } else if (alert.type === 'news') {
+                } else if (alert.type === 'news' && settings.newsAlerts) {
                     const newsAlert = alert as NewsAlert;
                     const eventTime = new Date(newsAlert.eventTime);
                     const diffMinutes = (eventTime.getTime() - now.getTime()) / (1000 * 60);

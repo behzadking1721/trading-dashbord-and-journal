@@ -87,3 +87,10 @@ export interface NewsAlert extends BaseAlert {
 }
 
 export type Alert = PriceAlert | NewsAlert;
+
+// Types for Settings
+export interface NotificationSettings {
+    globalEnable: boolean;
+    priceAlerts: boolean;
+    newsAlerts: boolean;
+}
