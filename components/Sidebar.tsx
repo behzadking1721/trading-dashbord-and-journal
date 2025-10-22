@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Home, Book, Calendar, Settings, Sun, Moon, Sparkles, LayoutPanelLeft, BarChart3 } from 'lucide-react';
+import { Home, Book, Calendar, Settings, Sun, Moon, Sparkles, LayoutPanelLeft, BarChart3, FileText } from 'lucide-react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import type { Theme } from '../types';
 
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/journal', icon: Book, label: 'ژورنال معاملاتی' },
   { href: '/calendar', icon: Calendar, label: 'تقویم اقتصادی' },
   { href: '/performance', icon: BarChart3, label: 'تحلیل عملکرد' },
+  { href: '/reports', icon: FileText, label: 'گزارش‌ها' },
   { href: '/settings', icon: Settings, label: 'تنظیمات' },
 ];
 

@@ -1,150 +1,82 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import type { Layout, Layouts } from 'react-grid-layout';
-import { openDB } from 'idb';
-import type { StoredLayouts, WidgetVisibility } from '../types';
+import React, { Suspense, useState, lazy } from 'react';
 import Card from './shared/Card';
-import { initialLayouts, WIDGETS, WIDGET_DEFINITIONS } from '../constants';
-import { RefreshCw, RefreshCcw } from 'lucide-react';
+import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
+import { RefreshCw, Clock, Bell } from 'lucide-react';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
-
-const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
-
-let dbPromise: ReturnType<typeof openDB> | null = null;
-const getLayoutDb = () => {
-    if (!dbPromise) {
-        dbPromise = openDB('dashboard-db', 1, {
-            upgrade(db) {
-                if (!db.objectStoreNames.contains('layouts')) {
-                    db.createObjectStore('layouts');
-                }
-            },
-        });
-    }
-    return dbPromise;
-};
+const AlertsManager = lazy(() => import('./AlertsManager'));
 
 const Dashboard: React.FC = () => {
-  const [layouts, setLayouts] = useState<Layouts>(initialLayouts);
-  const [isClient, setIsClient] = useState(false);
-  const [visibleWidgetKeys, setVisibleWidgetKeys] = useState<string[]>(Object.keys(WIDGETS));
+    const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
 
-  const updateVisibleWidgets = () => {
-    try {
-        const savedVisibility = localStorage.getItem(STORAGE_KEY_WIDGET_VISIBILITY);
-        if (savedVisibility) {
-            const visibilitySettings: WidgetVisibility = JSON.parse(savedVisibility);
-            const visibleKeys = Object.keys(WIDGETS).filter(key => visibilitySettings[key] !== false); // Default to true if not specified
-            setVisibleWidgetKeys(visibleKeys);
-        } else {
-            // If no settings, all are visible by default
-            setVisibleWidgetKeys(Object.keys(WIDGETS));
-        }
-    } catch (error) {
-        console.error("Failed to load widget visibility, showing all.", error);
-        setVisibleWidgetKeys(Object.keys(WIDGETS));
-    }
-  };
+    // This is a helper function to avoid repeating the Suspense and Card logic
+    const renderWidget = (widgetKey: keyof typeof WIDGETS, customContainerClass: string = "") => {
+        const WidgetComponent = WIDGETS[widgetKey];
+        const def = WIDGET_DEFINITIONS[widgetKey];
+        if (!WidgetComponent || !def) return null;
 
-
-  useEffect(() => {
-    setIsClient(true);
-    
-    updateVisibleWidgets(); // Initial load
-
-    const loadLayout = async () => {
-      try {
-        const db = await getLayoutDb();
-        const savedLayouts = await db.get('layouts', 'userLayout');
-        if (savedLayouts) {
-          setLayouts(savedLayouts);
-        }
-      } catch (error) {
-        console.error("Failed to load layout from IndexedDB", error);
-        setLayouts(initialLayouts);
-      }
-    };
-    loadLayout();
-
-    // Listen for changes from the settings page
-    const handleStorageChange = (event: StorageEvent) => {
-        if (event.key === STORAGE_KEY_WIDGET_VISIBILITY) {
-            updateVisibleWidgets();
-        }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-        window.removeEventListener('storage', handleStorageChange);
-    };
-
-  }, []);
-
-  const handleLayoutChange = (layout: Layout[], allLayouts: Layouts) => {
-    setLayouts(allLayouts);
-    saveLayout(allLayouts as StoredLayouts);
-  };
-
-  const saveLayout = async (layoutsToSave: StoredLayouts) => {
-    try {
-      const db = await getLayoutDb();
-      await db.put('layouts', layoutsToSave, 'userLayout');
-    } catch (error) {
-      console.error("Failed to save layout to IndexedDB", error);
-    }
-  };
-
-  const resetLayout = () => {
-    setLayouts(initialLayouts);
-    saveLayout(initialLayouts as StoredLayouts);
-  };
-
-  if (!isClient) {
-    return null; 
-  }
-
-  return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">داشبورد</h1>
-          <button
-              onClick={resetLayout}
-              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title="بازنشانی چیدمان"
-            >
-              <RefreshCcw className="w-4 h-4" />
-              <span>بازنشانی چیدمان</span>
-        </button>
-      </div>
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={layouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-        cols={{ lg: 12, md: 10, sm: 6 }}
-        rowHeight={30}
-        onLayoutChange={handleLayoutChange}
-        isDraggable={true}
-        isResizable={true}
-        draggableHandle=".drag-handle"
-      >
-        {visibleWidgetKeys.map((key) => {
-          const WidgetComponent = WIDGETS[key];
-          const def = WIDGET_DEFINITIONS[key];
-          if (!WidgetComponent || !def) return null;
-          return (
-            <div key={key}>
-              <Card title={def.title} icon={def.icon}>
-                 <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
-                    <WidgetComponent />
-                 </Suspense>
-              </Card>
+        return (
+            <div className={customContainerClass}>
+                <Card title={def.title} icon={def.icon}>
+                    <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
+                        <WidgetComponent />
+                    </Suspense>
+                </Card>
             </div>
-          );
-        })}
-      </ResponsiveGridLayout>
-    </div>
-  );
+        );
+    };
+
+    return (
+        <div className="p-4 lg:p-6 space-y-6">
+            {/* Smart Header */}
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">مرکز فرماندهی</h1>
+                    <p className="text-gray-500 dark:text-gray-400">خوش آمدید! این نمای کلی از وضعیت معاملاتی شماست.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                     <button onClick={() => setIsAlertsModalOpen(true)} className="p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-200/50 dark:hover:bg-gray-700/50" title="هشدارها">
+                        <Bell className="w-6 h-6 text-indigo-500"/>
+                    </button>
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+                         <div className="text-right">
+                            <p className="font-semibold">{new Date().toLocaleDateString('fa-IR-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p className="text-xs text-gray-500">ساعت به وقت تهران</p>
+                        </div>
+                         <Clock className="w-8 h-8 text-indigo-500" />
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Grid Layout */}
+            <main className="space-y-6">
+                {/* Section 1: KPIs & Readiness */}
+                <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    {renderWidget('performance_analytics')}
+                    {renderWidget('wallet_overview')}
+                    {renderWidget('risk_management')}
+                    {renderWidget('trading_checklist')}
+                </section>
+                
+                {/* Section 2 & 3: Market Analysis, Execution & Environmental Info */}
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main column */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {renderWidget('price_chart', "h-[450px]")}
+                        {renderWidget('trades_table')}
+                    </div>
+                    {/* Side column */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {renderWidget('sessions_clock')}
+                        {renderWidget('forex_news')}
+                    </div>
+                </section>
+            </main>
+
+            <Suspense fallback={null}>
+              {isAlertsModalOpen && <AlertsManager isOpen={isAlertsModalOpen} onClose={() => setIsAlertsModalOpen(false)} />}
+            </Suspense>
+        </div>
+    );
 };
 
 export default Dashboard;

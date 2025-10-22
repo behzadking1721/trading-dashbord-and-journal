@@ -14,7 +14,6 @@
     "react-dom": "^19.2.0",
     "idb": "^8.0.3",
     "react": "^19.2.0",
-    "react-grid-layout": "^1.5.2",
     "lightweight-charts": "^4.1.6",
     "marked": "^14.0.0"
   },

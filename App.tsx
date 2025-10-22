@@ -1,14 +1,18 @@
 import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
-import type { Theme } from './types';
+import type { Theme, PriceAlert, NewsAlert, AlertStatus } from './types';
 import { ThemeContext } from './contexts/ThemeContext';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import Sidebar from './components/Sidebar';
 import { RefreshCw } from 'lucide-react';
+import { getAlerts, updateAlertStatus } from './db';
+
 
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const JournalPage = lazy(() => import('./components/JournalPage'));
 const CalendarPage = lazy(() => import('./components/CalendarPage'));
 const SettingsPage = lazy(() => import('./components/SettingsPage'));
 const PerformanceAnalyticsPage = lazy(() => import('./components/PerformanceAnalyticsPage'));
+const ReportsPage = lazy(() => import('./components/ReportsPage'));
 
 
 const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
@@ -17,12 +21,93 @@ const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
   '/calendar': CalendarPage,
   '/settings': SettingsPage,
   '/performance': PerformanceAnalyticsPage,
+  '/reports': ReportsPage,
 };
+
+// Declare a global variable for current prices for the alert system
+declare global {
+  interface Window {
+    currentPrices: { [symbol: string]: { price: number; lastPrice?: number } };
+  }
+}
+window.currentPrices = window.currentPrices || {};
+
+
+const AppContent: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState(window.location.hash.substring(1) || '/');
+  const { addNotification } = useNotification();
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentPage(window.location.hash.substring(1) || '/');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+        const checkAlerts = async () => {
+            const activeAlerts = await getAlerts('active');
+            const now = new Date();
+
+            for (const alert of activeAlerts) {
+                if (alert.type === 'price') {
+                    const priceAlert = alert as PriceAlert;
+                    const priceInfo = window.currentPrices[priceAlert.symbol];
+                    if (!priceInfo || !priceInfo.lastPrice) continue;
+
+                    const { price, lastPrice } = priceInfo;
+                    
+                    let triggered = false;
+                    if (priceAlert.condition === 'crosses_above' && lastPrice < priceAlert.targetPrice && price >= priceAlert.targetPrice) {
+                        triggered = true;
+                    } else if (priceAlert.condition === 'crosses_below' && lastPrice > priceAlert.targetPrice && price <= priceAlert.targetPrice) {
+                        triggered = true;
+                    }
+
+                    if (triggered) {
+                        addNotification(`هشدار قیمت ${priceAlert.symbol}: از ${priceAlert.targetPrice} عبور کرد.`, 'info');
+                        await updateAlertStatus(alert.id, 'triggered');
+                    }
+                } else if (alert.type === 'news') {
+                    const newsAlert = alert as NewsAlert;
+                    const eventTime = new Date(newsAlert.eventTime);
+                    const diffMinutes = (eventTime.getTime() - now.getTime()) / (1000 * 60);
+
+                    if (diffMinutes > 0 && diffMinutes <= newsAlert.triggerBeforeMinutes) {
+                        addNotification(`رویداد: ${newsAlert.newsTitle} تا ${Math.ceil(diffMinutes)} دقیقه دیگر.`, 'info');
+                        await updateAlertStatus(alert.id, 'triggered');
+                    }
+                }
+            }
+        };
+
+        const interval = setInterval(checkAlerts, 5000); // Check every 5 seconds
+        return () => clearInterval(interval);
+    }, [addNotification]);
+
+
+  const CurrentPageComponent = pages[currentPage] || pages['/'];
+  return (
+    <>
+      <Sidebar currentPage={currentPage} />
+      <main className="flex-grow">
+        <Suspense fallback={
+          <div className="w-full h-screen flex items-center justify-center">
+            <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
+          </div>
+        }>
+          <CurrentPageComponent />
+        </Suspense>
+      </main>
+    </>
+  );
+};
+
 
 const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [currentPage, setCurrentPage] = useState(window.location.hash.substring(1) || '/');
-
+  
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('dashboard-theme') as Theme | null;
@@ -32,12 +117,6 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Could not access localStorage to get theme:", error);
     }
-
-    const handleHashChange = () => {
-      setCurrentPage(window.location.hash.substring(1) || '/');
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
   
   const toggleTheme = useCallback(() => {
@@ -66,22 +145,14 @@ const App: React.FC = () => {
   }, [theme]);
 
   const themeContextValue = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
-  const CurrentPageComponent = pages[currentPage] || pages['/'];
 
   return (
     <ThemeContext.Provider value={themeContextValue}>
-      <div className={`flex min-h-screen transition-colors duration-300 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200`}>
-        <Sidebar currentPage={currentPage} />
-        <main className="flex-grow">
-          <Suspense fallback={
-            <div className="w-full h-screen flex items-center justify-center">
-              <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
-            </div>
-          }>
-            <CurrentPageComponent />
-          </Suspense>
-        </main>
-      </div>
+      <NotificationProvider>
+          <div className={`flex min-h-screen transition-colors duration-300 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200`}>
+              <AppContent />
+          </div>
+      </NotificationProvider>
     </ThemeContext.Provider>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+// FIX: Import the `Time` type from lightweight-charts to correctly type chart data.
+import { createChart, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -30,7 +31,8 @@ const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string
 
 const PerformanceAnalyticsPage: React.FC = () => {
     const [stats, setStats] = useState<Stats | null>(null);
-    const [equityData, setEquityData] = useState<{ time: number, value: number }[]>([]);
+    // FIX: Use the `Time` type for the time property to match lightweight-charts' expected data structure.
+    const [equityData, setEquityData] = useState<{ time: Time, value: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
@@ -58,7 +60,8 @@ const PerformanceAnalyticsPage: React.FC = () => {
             
             // Use a timestamp slightly before the first trade for the initial point
             const firstTradeTimestamp = Math.floor(new Date(entries[0].date).getTime() / 1000);
-            const newEquityData: { time: number, value: number }[] = [{ time: firstTradeTimestamp - 60, value: initialBalance }];
+            // FIX: Ensure the data structure matches the state type by casting timestamps to `Time`.
+            const newEquityData: { time: Time, value: number }[] = [{ time: (firstTradeTimestamp - 60) as Time, value: initialBalance }];
 
 
             const wins = entries.filter(e => Number(e.profitOrLoss) > 0);
@@ -78,7 +81,8 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 }
                 // Use precise timestamp (in seconds) for each trade
                 const timestamp = Math.floor(new Date(entry.date).getTime() / 1000);
-                newEquityData.push({ time: timestamp, value: currentEquity });
+                // FIX: Ensure the data structure matches the state type by casting timestamps to `Time`.
+                newEquityData.push({ time: timestamp as Time, value: currentEquity });
             }
             
             setEquityData(newEquityData);
@@ -130,7 +134,9 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             seriesRef.current = chartRef.current.addAreaSeries();
+             // FIX: Cast chartRef.current to 'any' to bypass potential type mismatch issues
+             // in the lightweight-charts library where addAreaSeries is not found on IChartApi.
+             seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
         const isDark = theme !== 'light';

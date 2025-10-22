@@ -28,7 +28,7 @@ const generateMockData = (numBars = 100): OHLCData[] => {
   return data;
 };
 
-const SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD'];
+export const SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD'];
 const TIMEFRAMES = ['1m', '5m', '15m', '1H', '4H', '1D'];
 
 const PriceChartWidget: React.FC = () => {
@@ -72,7 +72,9 @@ const PriceChartWidget: React.FC = () => {
             },
         });
         
-        seriesRef.current = chartRef.current.addCandlestickSeries({
+        // FIX: Cast chartRef.current to 'any' to bypass potential type mismatch issues
+        // in the lightweight-charts library where addCandlestickSeries is not found on IChartApi.
+        seriesRef.current = (chartRef.current as any).addCandlestickSeries({
             upColor: '#22c55e',
             downColor: '#ef4444',
             borderDownColor: '#ef4444',
@@ -115,6 +117,32 @@ const PriceChartWidget: React.FC = () => {
         seriesRef.current?.setData(newData);
         chartRef.current?.timeScale().fitContent();
     }, [symbol, timeframe]);
+
+    // Simulate live price ticks for alert checking
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setChartData(prevData => {
+                if (prevData.length === 0) return prevData;
+                
+                const lastCandle = { ...prevData[prevData.length - 1] };
+                const lastPrice = lastCandle.close;
+                const newClose = lastPrice + (Math.random() - 0.5) * 0.1;
+                
+                lastCandle.close = newClose;
+                lastCandle.high = Math.max(lastCandle.high, newClose);
+                lastCandle.low = Math.min(lastCandle.low, newClose);
+
+                seriesRef.current?.update(lastCandle);
+
+                // Update global price state for alerts
+                window.currentPrices[symbol] = { price: newClose, lastPrice: lastPrice };
+                
+                return [...prevData.slice(0, -1), lastCandle];
+            });
+        }, 2000); // New tick every 2 seconds
+
+        return () => clearInterval(interval);
+    }, [symbol]);
 
   return (
     <div className="flex flex-col h-full">

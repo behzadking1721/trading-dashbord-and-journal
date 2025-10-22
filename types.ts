@@ -1,5 +1,3 @@
-import type { Layout } from 'react-grid-layout';
-
 export type Theme = 'light' | 'dark' | 'glass';
 
 export interface NewsItem {
@@ -13,12 +11,6 @@ export interface NewsItem {
   forecast?: string;
   previous?: string;
 }
-
-export type StoredLayouts = {
-  lg: Layout[];
-  md: Layout[];
-  sm: Layout[];
-};
 
 export interface JournalEntry {
     id: string;
@@ -66,3 +58,32 @@ export interface TradingSetup {
 }
 
 export type WidgetVisibility = { [key: string]: boolean };
+
+// Types for Alerts
+export type AlertType = 'price' | 'news';
+export type AlertStatus = 'active' | 'triggered';
+export type PriceAlertCondition = 'crosses_above' | 'crosses_below';
+
+export interface BaseAlert {
+    id: string;
+    type: AlertType;
+    status: AlertStatus;
+    createdAt: string; // ISO string
+}
+
+export interface PriceAlert extends BaseAlert {
+    type: 'price';
+    symbol: string;
+    condition: PriceAlertCondition;
+    targetPrice: number;
+}
+
+export interface NewsAlert extends BaseAlert {
+    type: 'news';
+    newsId: string; // To link back to the news item
+    newsTitle: string;
+    eventTime: string; // ISO string of the event
+    triggerBeforeMinutes: number;
+}
+
+export type Alert = PriceAlert | NewsAlert;

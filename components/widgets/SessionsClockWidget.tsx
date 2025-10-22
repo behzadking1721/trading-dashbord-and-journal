@@ -1,63 +1,84 @@
-
 import React, { useState, useEffect } from 'react';
-import { Clock, Sun, Moon } from 'lucide-react';
 
 interface Session {
   name: string;
+  shortName: string;
   openUtc: number;
   closeUtc: number;
+  color: string;
 }
 
 const SESSIONS: Session[] = [
-  { name: 'آسیا (توکیو)', openUtc: 0, closeUtc: 9 },
-  { name: 'اروپا (لندن)', openUtc: 8, closeUtc: 17 },
-  { name: 'آمریکا (نیویورک)', openUtc: 13, closeUtc: 22 },
+  { name: 'آسیا (توکیو)', shortName: 'توکیو', openUtc: 0, closeUtc: 9, color: 'bg-blue-500' },
+  { name: 'اروپا (لندن)', shortName: 'لندن', openUtc: 8, closeUtc: 17, color: 'bg-green-500' },
+  { name: 'آمریکا (نیویورک)', shortName: 'نیویورک', openUtc: 13, closeUtc: 22, color: 'bg-red-500' },
 ];
-
-const getTimeInTimezone = (date: Date, timeZone: string) => {
-  return new Date(date.toLocaleString('en-US', { timeZone }));
-};
 
 const SessionsClockWidget: React.FC = () => {
   const [utcTime, setUtcTime] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setUtcTime(new Date()), 1000);
+    const timer = setInterval(() => setUtcTime(new Date()), 1000 * 60); // Update every minute
     return () => clearInterval(timer);
   }, []);
 
-  const currentUtcHour = utcTime.getUTCHours();
+  const currentUtcHour = utcTime.getUTCHours() + utcTime.getUTCMinutes() / 60;
+  const tehranTime = new Date(utcTime.toLocaleString('en-US', { timeZone: 'Asia/Tehran' }));
 
   const getSessionStatus = (session: Session) => {
     const isOpen = currentUtcHour >= session.openUtc && currentUtcHour < session.closeUtc;
-    const isClosingSoon = !isOpen && currentUtcHour === session.openUtc - 1;
-    const isOpeningSoon = !isOpen && currentUtcHour === session.closeUtc -1;
-    
-    if (isOpen) return { text: 'باز', color: 'text-green-500' };
-    if (isClosingSoon || isOpeningSoon) return { text: 'در آستانه تغییر', color: 'text-yellow-500' };
-    return { text: 'بسته', color: 'text-red-500' };
+    return isOpen ? { text: 'باز', color: 'text-green-500' } : { text: 'بسته', color: 'text-red-500' };
   };
-  
-  const tehranTime = getTimeInTimezone(utcTime, 'Asia/Tehran');
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-around p-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">تهران</p>
-          <p className="font-bold text-lg">{tehranTime.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</p>
+        {/* Time Display */}
+        <div className="flex justify-around p-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
+            <div className="text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400">تهران</p>
+                <p className="font-bold text-lg font-mono">{tehranTime.toLocaleTimeString('fa-IR-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+            <div className="text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400">UTC</p>
+                <p className="font-bold text-lg font-mono">{utcTime.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false, hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
         </div>
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">UTC</p>
-          <p className="font-bold text-lg">{utcTime.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false, hour: '2-digit', minute: '2-digit' })}</p>
+        
+        {/* Timeline */}
+        <div>
+            <h4 className="text-sm font-semibold mb-3">تایم‌لاین ۲۴ ساعته (UTC)</h4>
+            <div className="relative w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                {SESSIONS.map(session => (
+                    <div
+                        key={session.name}
+                        className={`absolute h-full ${session.color} opacity-70 flex items-center justify-center`}
+                        style={{
+                            left: `${(session.openUtc / 24) * 100}%`,
+                            width: `${((session.closeUtc - session.openUtc) / 24) * 100}%`,
+                        }}
+                        title={`${session.name}: ${session.openUtc}:00 - ${session.closeUtc}:00 UTC`}
+                    >
+                        <span className="text-white text-[10px] font-bold">{session.shortName}</span>
+                    </div>
+                ))}
+                 {/* Current Time Marker */}
+                 <div 
+                    className="absolute top-0 bottom-0 w-0.5 bg-yellow-400"
+                    style={{ left: `${(currentUtcHour / 24) * 100}%` }}
+                    title={`Current UTC Time: ${utcTime.getUTCHours()}:${utcTime.getUTCMinutes()}`}
+                 >
+                     <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-yellow-400 rounded-full"></div>
+                 </div>
+            </div>
         </div>
-      </div>
+
+      {/* Session List */}
       <div className="space-y-2">
         {SESSIONS.map(session => (
             <div key={session.name} className="flex justify-between items-center text-sm p-2 rounded">
                 <span>{session.name}</span>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono">{String(session.openUtc).padStart(2,'0')}:00 - {String(session.closeUtc).padStart(2,'0')}:00</span>
+                    <span className="text-xs font-mono">{String(session.openUtc).padStart(2,'0')}:00 - {String(session.closeUtc).padStart(2,'0')}</span>
                     <span className={`font-semibold ${getSessionStatus(session).color}`}>
                         {getSessionStatus(session).text}
                     </span>
