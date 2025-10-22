@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bell, Pin, Filter, X, Flame, Search, CalendarPlus, Check } from 'lucide-react';
+import { Bell, Pin, Filter, X, Flame, Search, CalendarPlus, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { addAlert } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
 import type { NewsAlert, EconomicEvent } from '../types';
@@ -57,7 +57,7 @@ const downloadICSFile = (event: EconomicEvent) => {
 const ALL_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'NZD', 'CHF', 'CNY'];
 const ALL_IMPORTANCES: EconomicEvent['importance'][] = ['High', 'Medium', 'Low'];
 
-const generateMockEvents = (timeframe: 'today' | 'week'): EconomicEvent[] => {
+const generateMockEvents = (daysInFuture: number, daysInPast: number = 0): EconomicEvent[] => {
     const events: Omit<EconomicEvent, 'id' | 'time' | 'actual'>[] = [
       { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K', sourceUrl: 'https://www.bls.gov/news.release/empsit.nr0.htm' },
       { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '' },
@@ -70,8 +70,9 @@ const generateMockEvents = (timeframe: 'today' | 'week'): EconomicEvent[] => {
     ];
     
     const results: EconomicEvent[] = [];
-    const days = timeframe === 'today' ? 1 : 7;
-    for (let i = 0; i < days; i++) {
+    const totalDays = daysInFuture + daysInPast;
+
+    for (let i = -daysInPast; i < daysInFuture; i++) {
         for (const [index, e] of events.entries()) {
              const eventTime = new Date();
              eventTime.setDate(eventTime.getDate() + i);
@@ -85,7 +86,7 @@ const generateMockEvents = (timeframe: 'today' | 'week'): EconomicEvent[] => {
                 ...e,
                 id: `event-${i}-${index}`,
                 time: eventTime,
-                actual: null
+                actual: i < 0 ? (parseFloat(e.previous || '0') * (1 + (Math.random() - 0.5) * 0.1)).toFixed(1) + (e.forecast?.includes('K') ? 'K' : e.forecast?.includes('%') ? '%' : '') : null
              });
         }
     }
@@ -196,21 +197,36 @@ const AddToCalendarButton: React.FC<{ event: EconomicEvent; isAdded: boolean; on
     )
 }
 
+const formatDateForInput = (date: Date) => {
+    return date.toISOString().split('T')[0];
+}
 
 const CalendarPage: React.FC = () => {
     const [allEvents, setAllEvents] = useState<EconomicEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const { addNotification } = useNotification();
     
-    const [timeFilter, setTimeFilter] = useState<'today' | 'week'>('today');
+    const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'custom'>('today');
+    const [customDateRange, setCustomDateRange] = useState<{ start: string; end: string }>({ start: formatDateForInput(new Date()), end: formatDateForInput(new Date()) });
     const [importanceFilter, setImportanceFilter] = useState<EconomicEvent['importance'][]>([]);
     const [currencyFilter, setCurrencyFilter] = useState<string[]>([]);
-    const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+    
+    const PINNED_EVENTS_LS_KEY = 'calendar_pinned_events';
+    const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem(PINNED_EVENTS_LS_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+    
     const [addedToCalendarIds, setAddedToCalendarIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         setLoading(true);
-        const events = generateMockEvents(timeFilter);
+        // Simulate a broader data fetch for filtering
+        const events = generateMockEvents(30, 30);
         setAllEvents(events);
         setTimeout(() => setLoading(false), 500);
 
@@ -233,15 +249,41 @@ const CalendarPage: React.FC = () => {
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [timeFilter]);
+    }, []);
 
     const filteredEvents = useMemo(() => {
         return allEvents.filter(event => {
             if (importanceFilter.length > 0 && !importanceFilter.includes(event.importance)) return false;
             if (currencyFilter.length > 0 && !currencyFilter.includes(event.currency)) return false;
+
+            const eventDate = new Date(event.time);
+
+            if (timeFilter === 'today') {
+                const today = new Date();
+                return eventDate.toDateString() === today.toDateString();
+            }
+            if (timeFilter === 'week') {
+                 const today = new Date();
+                 const dayOfWeek = today.getDay(); // Sunday - 0, Saturday - 6
+                 const startOfWeek = new Date(today);
+                 startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Assuming Monday start
+                 startOfWeek.setHours(0, 0, 0, 0);
+                 const endOfWeek = new Date(startOfWeek);
+                 endOfWeek.setDate(startOfWeek.getDate() + 6);
+                 endOfWeek.setHours(23, 59, 59, 999);
+                 return event.time >= startOfWeek && event.time <= endOfWeek;
+            }
+            if (timeFilter === 'custom') {
+                if (!customDateRange.start || !customDateRange.end) return true;
+                const startDate = new Date(customDateRange.start);
+                startDate.setHours(0, 0, 0, 0);
+                const endDate = new Date(customDateRange.end);
+                endDate.setHours(23, 59, 59, 999);
+                return event.time >= startDate && event.time <= endDate;
+            }
             return true;
         });
-    }, [allEvents, importanceFilter, currencyFilter]);
+    }, [allEvents, importanceFilter, currencyFilter, timeFilter, customDateRange]);
     
     const { pinnedEvents, regularEvents } = useMemo(() => {
         const pinned: EconomicEvent[] = [];
@@ -253,11 +295,19 @@ const CalendarPage: React.FC = () => {
                 regular.push(event);
             }
         }
-        return { pinnedEvents: pinned, regularEvents: regular };
+        return { pinnedEvents: pinned.sort((a, b) => a.time.getTime() - b.time.getTime()), regularEvents: regular };
     }, [filteredEvents, pinnedIds]);
 
     const handlePinToggle = (id: string) => {
-        setPinnedIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
+        setPinnedIds(prev => {
+            const newPinned = prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id];
+            try {
+                localStorage.setItem(PINNED_EVENTS_LS_KEY, JSON.stringify(newPinned));
+            } catch (e) {
+                console.error("Failed to save pinned IDs to localStorage", e);
+            }
+            return newPinned;
+        });
     };
 
     const markAsAddedToCalendar = (eventId: string) => {
@@ -319,14 +369,21 @@ const CalendarPage: React.FC = () => {
             <h1 className="text-2xl font-bold">تقویم اقتصادی</h1>
             
             <div className="p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border dark:border-gray-700 space-y-4">
-                <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm">
                     <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-200 dark:bg-gray-700">
-                        {(['today', 'week'] as const).map(filter => (
+                        {(['today', 'week', 'custom'] as const).map(filter => (
                             <button key={filter} onClick={() => setTimeFilter(filter)} className={`px-3 py-1 rounded-md text-sm font-semibold ${timeFilter === filter ? 'bg-white dark:bg-gray-800 shadow' : 'text-gray-600 dark:text-gray-300'}`}>
-                                {{ 'today': 'امروز', 'week': 'هفته جاری' }[filter]}
+                                {{ 'today': 'امروز', 'week': 'هفته جاری', 'custom': 'سفارشی' }[filter]}
                             </button>
                         ))}
                     </div>
+                    {timeFilter === 'custom' && (
+                        <div className="flex items-center gap-2 animate-fade-in">
+                             <input type="date" value={customDateRange.start} onChange={e => setCustomDateRange(prev => ({...prev, start: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
+                             <span>تا</span>
+                             <input type="date" value={customDateRange.end} onChange={e => setCustomDateRange(prev => ({...prev, end: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
+                        </div>
+                    )}
                      <div className="flex items-center gap-3">
                         <span className="font-semibold">اهمیت:</span>
                         {ALL_IMPORTANCES.map(imp => (
