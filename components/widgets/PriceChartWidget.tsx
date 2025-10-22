@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
-import { createChart, IChartApi, ISeriesApi, LineStyle } from 'lightweight-charts';
-import type { OHLCData } from '../../types';
+import { createChart, IChartApi, ISeriesApi, LineStyle, IPriceLine } from 'lightweight-charts';
+import type { OHLCData, JournalEntry } from '../../types';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
 const generateMockData = (numBars = 100): OHLCData[] => {
@@ -35,6 +35,7 @@ const PriceChartWidget: React.FC = () => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+    const tradeLinesRef = useRef<IPriceLine[]>([]);
     const { theme } = useContext(ThemeContext);
 
     const [symbol, setSymbol] = useState(SYMBOLS[0]);
@@ -72,8 +73,6 @@ const PriceChartWidget: React.FC = () => {
             },
         });
         
-        // FIX: Cast chartRef.current to 'any' to bypass potential type mismatch issues
-        // in the lightweight-charts library where addCandlestickSeries is not found on IChartApi.
         seriesRef.current = (chartRef.current as any).addCandlestickSeries({
             upColor: '#22c55e',
             downColor: '#ef4444',
@@ -92,6 +91,64 @@ const PriceChartWidget: React.FC = () => {
             chartRef.current?.remove();
         };
     }, []);
+
+    useEffect(() => {
+        const clearTradeLines = () => {
+            if (seriesRef.current && tradeLinesRef.current.length > 0) {
+                tradeLinesRef.current.forEach(line => seriesRef.current!.removePriceLine(line));
+                tradeLinesRef.current = [];
+            }
+        };
+
+        const handleShowTrade = (event: CustomEvent<JournalEntry>) => {
+            if (!seriesRef.current) return;
+
+            const trade = event.detail;
+
+            clearTradeLines();
+
+            const newLines: IPriceLine[] = [];
+
+            // Entry Price
+            newLines.push(seriesRef.current.createPriceLine({
+                price: trade.entryPrice,
+                color: '#3b82f6', // blue-500
+                lineWidth: 2,
+                lineStyle: LineStyle.Solid,
+                axisLabelVisible: true,
+                title: `ورود ${trade.side}`,
+            }));
+
+            // Take Profit
+            newLines.push(seriesRef.current.createPriceLine({
+                price: trade.takeProfit,
+                color: '#22c55e', // green-500
+                lineWidth: 2,
+                lineStyle: LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'حد سود',
+            }));
+
+            // Stop Loss
+            newLines.push(seriesRef.current.createPriceLine({
+                price: trade.stopLoss,
+                color: '#ef4444', // red-500
+                lineWidth: 2,
+                lineStyle: LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'حد ضرر',
+            }));
+
+            tradeLinesRef.current = newLines;
+        };
+        
+        window.addEventListener('showTradeOnChart', handleShowTrade as EventListener);
+        clearTradeLines();
+
+        return () => {
+            window.removeEventListener('showTradeOnChart', handleShowTrade as EventListener);
+        };
+    }, [symbol]);
 
     useEffect(() => {
         chartRef.current?.applyOptions({

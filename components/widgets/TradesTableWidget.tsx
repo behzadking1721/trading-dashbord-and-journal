@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { JournalEntry } from '../../types';
 import { getLatestJournalEntries } from '../../db';
-import { PlusCircle, ArrowUpCircle, ArrowDownCircle, ExternalLink } from 'lucide-react';
+import { PlusCircle, ArrowUpCircle, ArrowDownCircle, ExternalLink, LineChart } from 'lucide-react';
 
 const SkeletonLoader = () => (
     <tbody className="animate-pulse">
@@ -12,6 +12,7 @@ const SkeletonLoader = () => (
                 <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
                 <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
                 <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div></td>
             </tr>
         ))}
     </tbody>
@@ -46,6 +47,12 @@ const TradesTableWidget: React.FC = () => {
     }
     return `${prefix}${num.toFixed(digits)}`;
   };
+  
+  const showTradeOnChart = (trade: JournalEntry) => {
+    const event = new CustomEvent('showTradeOnChart', { detail: trade });
+    window.dispatchEvent(event);
+    window.location.hash = '/';
+  };
 
 
   return (
@@ -69,6 +76,7 @@ const TradesTableWidget: React.FC = () => {
               <th scope="col" className="px-4 py-2">ورود</th>
               <th scope="col" className="px-4 py-2">خروج</th>
               <th scope="col" className="px-4 py-2">سود/ضرر</th>
+              <th scope="col" className="px-4 py-2">عملیات</th>
             </tr>
           </thead>
           {loading ? <SkeletonLoader /> : (
@@ -85,9 +93,14 @@ const TradesTableWidget: React.FC = () => {
                   <td className={`px-4 py-2 font-bold font-mono ${Number(trade.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {formatNumber(trade.profitOrLoss, 2, '$')}
                   </td>
+                  <td className="px-4 py-2">
+                    <button onClick={() => showTradeOnChart(trade)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
+                        <LineChart size={16} />
+                    </button>
+                  </td>
                 </tr>
               )) : (
-                  <tr><td colSpan={5} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
+                  <tr><td colSpan={6} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
               )}
             </tbody>
           )}
