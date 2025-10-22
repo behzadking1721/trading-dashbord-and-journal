@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>داشبورد معاملاتی</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/react-grid-layout/1.4.4/css/styles.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/react-resizable/3.0.5/css/styles.min.css"
+    />
+    <style>
+      body {
+        font-family: 'Vazirmatn', sans-serif;
+        direction: rtl;
+      }
+      .glass {
+        background-image: url('https://picsum.photos/seed/bg/1920/1080');
+        background-size: cover;
+        background-attachment: fixed;
+      }
+      .glass .glass-card {
+        background-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .dark .glass .glass-card {
+        background-color: rgba(20, 20, 20, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.546.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "idb": "https://aistudiocdn.com/idb@^8.0.3",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-grid-layout": "https://aistudiocdn.com/react-grid-layout@^1.5.2"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
