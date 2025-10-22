@@ -15,7 +15,6 @@ const ProgressBar: React.FC<{ value: number }> = ({ value }) => {
     );
 };
 
-
 const RiskManagementWidget: React.FC = () => {
     const totalRiskPercent = 2.5; // Example: 2.5% of total equity at risk
     const maxAllowedRisk = 6; // Max 6%
@@ -65,10 +64,18 @@ const RiskManagementWidget: React.FC = () => {
 
   return (
     <div className="space-y-6">
+       {loading ? (
+            <div className="animate-pulse space-y-2">
+                <div className="flex justify-between items-center">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
+                    <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/5"></div>
+                </div>
+                <div className="h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full w-full"></div>
+            </div>
+       ) : (
         <div>
             <div className="flex justify-between items-center mb-1">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ShieldAlert size={16} className="text-yellow-500"/>
+                <h4 className="text-sm font-semibold">
                     مجموع ریسک فعال
                 </h4>
                 <span className="text-lg font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
@@ -76,6 +83,7 @@ const RiskManagementWidget: React.FC = () => {
             <ProgressBar value={riskLevel} />
             <p className="text-xs text-gray-500 mt-1">حد مجاز ریسک کلی: {maxAllowedRisk}%</p>
         </div>
+       )}
         
         <div>
             <h4 className="text-sm font-semibold mb-3">توزیع نمادها (۱۰ معامله اخیر)</h4>

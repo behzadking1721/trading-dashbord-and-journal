@@ -3,12 +3,28 @@ import type { JournalEntry } from '../../types';
 import { getLatestJournalEntries } from '../../db';
 import { PlusCircle, ArrowUpCircle, ArrowDownCircle, ExternalLink } from 'lucide-react';
 
+const SkeletonLoader = () => (
+    <tbody className="animate-pulse">
+        {[...Array(3)].map((_, i) => (
+            <tr key={i} className="border-b dark:border-gray-700">
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+            </tr>
+        ))}
+    </tbody>
+);
+
+
 const TradesTableWidget: React.FC = () => {
   const [trades, setTrades] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTrades = async () => {
+      setLoading(true);
       try {
         const latestTrades = await getLatestJournalEntries(5);
         setTrades(latestTrades);
@@ -18,7 +34,9 @@ const TradesTableWidget: React.FC = () => {
         setLoading(false);
       }
     };
+    window.addEventListener('journalUpdated', fetchTrades);
     fetchTrades();
+    return () => window.removeEventListener('journalUpdated', fetchTrades);
   }, []);
 
   return (
@@ -44,26 +62,26 @@ const TradesTableWidget: React.FC = () => {
               <th scope="col" className="px-4 py-2">سود/ضرر</th>
             </tr>
           </thead>
-          <tbody>
-            {loading ? (
-                <tr><td colSpan={5} className="text-center py-4">در حال بارگذاری...</td></tr>
-            ) : trades.length > 0 ? trades.map(trade => (
-              <tr key={trade.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                <td className="px-4 py-2 font-medium">{trade.symbol}</td>
-                <td className={`px-4 py-2 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
-                    {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
-                    {trade.side === 'Buy' ? 'خرید' : 'فروش'}
-                </td>
-                <td className="px-4 py-2 font-mono">{trade.entryPrice.toFixed(4)}</td>
-                <td className="px-4 py-2 font-mono">{trade.exitPrice?.toFixed(4)}</td>
-                <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  ${trade.profitOrLoss.toFixed(2)}
-                </td>
-              </tr>
-            )) : (
-                <tr><td colSpan={5} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
-            )}
-          </tbody>
+          {loading ? <SkeletonLoader /> : (
+            <tbody>
+              {trades.length > 0 ? trades.map(trade => (
+                <tr key={trade.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50">
+                  <td className="px-4 py-2 font-medium">{trade.symbol}</td>
+                  <td className={`px-4 py-2 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
+                      {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
+                      {trade.side === 'Buy' ? 'خرید' : 'فروش'}
+                  </td>
+                  <td className="px-4 py-2 font-mono">{trade.entryPrice.toFixed(4)}</td>
+                  <td className="px-4 py-2 font-mono">{trade.exitPrice?.toFixed(4)}</td>
+                  <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    ${trade.profitOrLoss.toFixed(2)}
+                  </td>
+                </tr>
+              )) : (
+                  <tr><td colSpan={5} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
+              )}
+            </tbody>
+          )}
         </table>
       </div>
     </div>

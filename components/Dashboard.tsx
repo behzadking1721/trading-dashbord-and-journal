@@ -1,54 +1,17 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import type { Layout, Layouts } from 'react-grid-layout';
-import { openDB, IDBPDatabase } from 'idb';
-import type { StoredLayouts } from '../types';
+import { openDB } from 'idb';
+import type { StoredLayouts, WidgetVisibility } from '../types';
 import Card from './shared/Card';
-import { initialLayouts } from '../constants';
+import { initialLayouts, WIDGETS, WIDGET_DEFINITIONS } from '../constants';
 import { RefreshCw, RefreshCcw } from 'lucide-react';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
-  price_chart: lazy(() => import('./widgets/PriceChartWidget')),
-  forex_news: lazy(() => import('./widgets/ForexNewsWidget')),
-  sessions_clock: lazy(() => import('./widgets/SessionsClockWidget')),
-  trades_table: lazy(() => import('./widgets/TradesTableWidget')),
-  risk_management: lazy(() => import('./widgets/RiskManagementWidget')),
-  performance_analytics: lazy(() => import('./widgets/PerformanceAnalyticsWidget')),
-  trading_checklist: lazy(() => import('./widgets/TradingChecklistWidget')),
-  economic_calendar: lazy(() => import('./widgets/EconomicCalendarWidget')),
-  alarms_reminders: lazy(() => import('./widgets/AlarmsRemindersWidget')),
-  system_status: lazy(() => import('./widgets/SystemStatusWidget')),
-  weather: lazy(() => import('./widgets/WeatherWidget')),
-  hafez_fortune: lazy(() => import('./widgets/HafezFortuneWidget')),
-  motivational_quote: lazy(() => import('./widgets/MotivationalQuoteWidget')),
-  daily_education: lazy(() => import('./widgets/DailyEducationWidget')),
-  wallet_overview: lazy(() => import('./widgets/WalletOverviewWidget')),
-};
+const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 
-const WIDGET_TITLES: { [key: string]: string } = {
-  price_chart: 'نمودار قیمت',
-  forex_news: 'اخبار لحظه‌ای فارکس',
-  sessions_clock: 'سشن‌های معاملاتی و ساعت جهانی',
-  trades_table: 'تاریخچه معاملات',
-  risk_management: 'مدیریت ریسک',
-  performance_analytics: 'تحلیل عملکرد',
-  trading_checklist: 'چک‌لیست ترید',
-  economic_calendar: 'تقویم اقتصادی',
-  alarms_reminders: 'آلارم‌ها و یادآورها',
-  system_status: 'وضعیت سیستم',
-  weather: 'هواشناسی',
-  hafez_fortune: 'فال حافظ',
-  motivational_quote: 'جمله انگیزشی',
-  daily_education: 'آموزش روزانه',
-  wallet_overview: 'نمای کلی کیف پول',
-};
-
-// Define the canonical list of all widget keys.
-const WIDGET_KEYS = Object.keys(WIDGETS);
-
-let dbPromise: Promise<IDBPDatabase> | null = null;
+let dbPromise: ReturnType<typeof openDB> | null = null;
 const getLayoutDb = () => {
     if (!dbPromise) {
         dbPromise = openDB('dashboard-db', 1, {
@@ -62,13 +25,34 @@ const getLayoutDb = () => {
     return dbPromise;
 };
 
-
 const Dashboard: React.FC = () => {
   const [layouts, setLayouts] = useState<Layouts>(initialLayouts);
   const [isClient, setIsClient] = useState(false);
+  const [visibleWidgetKeys, setVisibleWidgetKeys] = useState<string[]>(Object.keys(WIDGETS));
+
+  const updateVisibleWidgets = () => {
+    try {
+        const savedVisibility = localStorage.getItem(STORAGE_KEY_WIDGET_VISIBILITY);
+        if (savedVisibility) {
+            const visibilitySettings: WidgetVisibility = JSON.parse(savedVisibility);
+            const visibleKeys = Object.keys(WIDGETS).filter(key => visibilitySettings[key] !== false); // Default to true if not specified
+            setVisibleWidgetKeys(visibleKeys);
+        } else {
+            // If no settings, all are visible by default
+            setVisibleWidgetKeys(Object.keys(WIDGETS));
+        }
+    } catch (error) {
+        console.error("Failed to load widget visibility, showing all.", error);
+        setVisibleWidgetKeys(Object.keys(WIDGETS));
+    }
+  };
+
 
   useEffect(() => {
     setIsClient(true);
+    
+    updateVisibleWidgets(); // Initial load
+
     const loadLayout = async () => {
       try {
         const db = await getLayoutDb();
@@ -82,6 +66,19 @@ const Dashboard: React.FC = () => {
       }
     };
     loadLayout();
+
+    // Listen for changes from the settings page
+    const handleStorageChange = (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY_WIDGET_VISIBILITY) {
+            updateVisibleWidgets();
+        }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+    };
+
   }, []);
 
   const handleLayoutChange = (layout: Layout[], allLayouts: Layouts) => {
@@ -131,13 +128,15 @@ const Dashboard: React.FC = () => {
         isResizable={true}
         draggableHandle=".drag-handle"
       >
-        {WIDGET_KEYS.map((key) => {
+        {visibleWidgetKeys.map((key) => {
           const WidgetComponent = WIDGETS[key];
+          const def = WIDGET_DEFINITIONS[key];
+          if (!WidgetComponent || !def) return null;
           return (
             <div key={key}>
-              <Card title={WIDGET_TITLES[key] || 'کارت'}>
+              <Card title={def.title} icon={def.icon}>
                  <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
-                    {WidgetComponent ? <WidgetComponent /> : <div>کامپوننت یافت نشد.</div>}
+                    <WidgetComponent />
                  </Suspense>
               </Card>
             </div>

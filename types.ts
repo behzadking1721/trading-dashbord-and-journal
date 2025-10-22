@@ -2,19 +2,6 @@ import type { Layout } from 'react-grid-layout';
 
 export type Theme = 'light' | 'dark' | 'glass';
 
-export interface Trade {
-  id: string;
-  symbol: string;
-  side: 'Buy' | 'Sell';
-  qty: number;
-  entryPrice: number;
-  exitPrice?: number;
-  stopLoss: number;
-  takeProfit: number;
-  resultPnL: number;
-  date: string;
-}
-
 export interface NewsItem {
   id: string;
   title: string;
@@ -27,12 +14,6 @@ export interface NewsItem {
   previous?: string;
 }
 
-export interface ChecklistItem {
-  id: string;
-  text: string;
-  completed: boolean;
-}
-
 export type StoredLayouts = {
   lg: Layout[];
   md: Layout[];
@@ -40,7 +21,7 @@ export type StoredLayouts = {
 };
 
 export interface JournalEntry {
-    id:string;
+    id: string;
     date: string;
     symbol: string;
     side: 'Buy' | 'Sell';
@@ -51,10 +32,13 @@ export interface JournalEntry {
     positionSize: number;
     riskRewardRatio: number;
     profitOrLoss: number;
-    strategy: string;
-    preTradeThoughts: string;
-    postTradeThoughts: string;
     status: 'Win' | 'Loss' | 'Breakeven';
+    setupId?: string; // Link to the TradingSetup
+    setupName?: string; // Denormalized for easy display
+    emotions?: string[];
+    mistakes?: string[];
+    notesBefore?: string;
+    notesAfter?: string;
 }
 
 export interface OHLCData {
@@ -65,10 +49,11 @@ export interface OHLCData {
   close: number;
 }
 
-// New types for Trading Setups
+// Types for Trading Setups
 export interface TradingChecklistItem {
     id: string;
     text: string;
+    description?: string;
 }
 
 export interface TradingSetup {
@@ -79,3 +64,5 @@ export interface TradingSetup {
     checklist: TradingChecklistItem[];
     isActive: boolean;
 }
+
+export type WidgetVisibility = { [key: string]: boolean };
