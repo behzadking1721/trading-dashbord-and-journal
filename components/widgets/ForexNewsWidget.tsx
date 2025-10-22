@@ -1,62 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import type { NewsItem, NewsAlert } from '../../types';
-import { Pin, Bell } from 'lucide-react';
+import type { EconomicEvent, NewsAlert } from '../../types';
+import { Pin, Bell, Flame } from 'lucide-react';
 import { addAlert } from '../../db';
 import { useNotification } from '../../contexts/NotificationContext';
 
-const MOCK_NEWS: NewsItem[] = [
-  { id: '1', title: 'Non-Farm Payrolls', time: new Date(Date.now() + 120 * 60 * 1000), importance: 'High', currency: 'USD', link: '#' },
-  { id: '2', title: 'ECB Press Conference', time: new Date(Date.now() + 300 * 60 * 1000), importance: 'High', currency: 'EUR', link: '#' },
-  { id: '3', title: 'Retail Sales m/m', time: new Date(Date.now() + 20 * 60 * 1000), importance: 'Medium', currency: 'GBP', link: '#' },
-  { id: '4', title: 'Unemployment Rate', time: new Date(Date.now() + 5 * 60 * 1000), importance: 'Low', currency: 'CAD', link: '#' },
-  { id: '5', title: 'CPI m/m', time: new Date(Date.now() + 65 * 60 * 1000), importance: 'Medium', currency: 'USD', link: '#' },
-  { id: '6', title: 'BoJ Policy Rate', time: new Date(Date.now() + 480 * 60 * 1000), importance: 'High', currency: 'JPY', link: '#' },
-];
+// --- MOCK DATA GENERATOR ---
+const generateMockEventsForToday = (): EconomicEvent[] => {
+    const events: Omit<EconomicEvent, 'id' | 'time' | 'actual'>[] = [
+      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K' },
+      { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '' },
+      { event: 'Retail Sales m/m', currency: 'GBP', countryCode: 'GB', importance: 'Medium', forecast: '0.5%', previous: '0.2%' },
+      { event: 'Unemployment Rate', currency: 'CAD', countryCode: 'CA', importance: 'Low', forecast: '5.8%', previous: '5.8%' },
+      { event: 'CPI m/m', currency: 'USD', countryCode: 'US', importance: 'Medium', forecast: '0.3%', previous: '0.4%' },
+      { event: 'BoJ Policy Rate', currency: 'JPY', countryCode: 'JP', importance: 'High', forecast: '0.10%', previous: '0.10%' },
+    ];
 
-const ImportanceBadge: React.FC<{ importance: 'High' | 'Medium' | 'Low' }> = ({ importance }) => {
-  const color = {
-    High: 'bg-red-500',
-    Medium: 'bg-orange-500',
-    Low: 'bg-gray-500',
-  }[importance];
-  return <span className={`w-3 h-3 rounded-full ${color} inline-block`}></span>;
+    // Generate events only in the future for today
+    return events.map((e, index) => ({
+        ...e,
+        id: `today-widget-event-${index + 1}`,
+        time: new Date(Date.now() + (Math.random() * 8 * 60 + 5) * 60 * 1000), // Random time in the next 8 hours
+        actual: null,
+    })).sort((a,b) => a.time.getTime() - b.time.getTime());
+};
+// --- END MOCK DATA ---
+
+const COUNTRY_FLAGS: { [key: string]: string } = {
+  US: '🇺🇸', EU: '🇪🇺', GB: '🇬🇧', CA: '🇨🇦', JP: '🇯🇵', AU: '🇦🇺', NZ: '🇳🇿', CH: '🇨🇭', CN: '🇨🇳'
+};
+
+const ImportanceIndicator: React.FC<{ importance: 'High' | 'Medium' | 'Low' }> = ({ importance }) => {
+  const styles = {
+    High: { color: 'bg-red-500' },
+    Medium: { color: 'bg-orange-400' },
+    Low: { color: 'bg-gray-400' },
+  };
+  return (
+    <div className="flex items-center w-8" title={`اهمیت: ${importance}`}>
+      <span className={`w-2.5 h-2.5 rounded-full ${styles[importance].color}`}></span>
+    </div>
+  );
 };
 
 const Countdown: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
-  const [timeLeft, setTimeLeft] = useState('');
+    const [now, setNow] = useState(new Date());
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      const difference = targetDate.getTime() - now.getTime();
-      
-      if (difference > 0) {
-        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((difference / 1000 / 60) % 60);
-        const seconds = Math.floor((difference / 1000) % 60);
-        setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-      } else {
-        setTimeLeft('منتشر شد');
-        clearInterval(timer);
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [targetDate]);
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
-  return <span className="text-xs font-mono">{timeLeft}</span>;
+    const difference = targetDate.getTime() - now.getTime();
+    
+    if (difference <= 0) {
+        return <span className="text-xs font-mono text-gray-400 dark:text-gray-500">منتشر شد</span>;
+    }
+
+    const minutesLeft = Math.floor(difference / (1000 * 60));
+    const hours = Math.floor(difference / (1000 * 60 * 60));
+    const minutes = Math.floor((difference / 1000 / 60) % 60);
+    const seconds = Math.floor((difference / 1000) % 60);
+
+    const isUrgent = minutesLeft < 5;
+    // The flashing animation will be achieved with the `animate-ping` class.
+    const isImminent = minutesLeft < 1;
+
+    return (
+        <div className="flex flex-col items-end">
+             <span className={`text-sm font-mono tabular-nums transition-colors ${isUrgent ? 'text-red-500 font-bold' : ''}`}>
+                {`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
+            </span>
+            {isImminent && <span className="absolute h-2 w-2 rounded-full bg-red-500 animate-ping"></span>}
+        </div>
+    );
 };
 
 
 const ForexNewsWidget: React.FC = () => {
-    type FilterType = 'All' | 'High' | 'Medium' | 'Low';
-    const [filter, setFilter] = useState<FilterType>('All');
+    const [events, setEvents] = useState<EconomicEvent[]>([]);
     const { addNotification } = useNotification();
     
-    const filteredNews = MOCK_NEWS
-        .filter(item => filter === 'All' || item.importance === filter)
-        .sort((a, b) => a.time.getTime() - b.time.getTime());
+    useEffect(() => {
+        // Initial load
+        const todayEvents = generateMockEventsForToday();
+        setEvents(todayEvents);
 
-    const handleAddNewsAlert = async (item: NewsItem) => {
+        // Simulate live updates
+        const interval = setInterval(() => {
+            setEvents(prevEvents => prevEvents.map(event => {
+                if (event.time.getTime() <= Date.now() && event.actual === null) {
+                    // When time passes, mark as published.
+                    // A more realistic simulation could provide a random 'Actual' value.
+                    return { ...event, actual: 'Simulated' }; 
+                }
+                return event;
+            }));
+        }, 30000); // Check every 30 seconds
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleAddNewsAlert = async (item: EconomicEvent) => {
         const minutesStr = prompt("چند دقیقه قبل از رویداد به شما اطلاع داده شود؟", "5");
         if (minutesStr) {
             const triggerBeforeMinutes = parseInt(minutesStr, 10);
@@ -67,50 +111,41 @@ const ForexNewsWidget: React.FC = () => {
                     status: 'active',
                     createdAt: new Date().toISOString(),
                     newsId: item.id,
-                    newsTitle: item.title,
+                    newsTitle: item.event,
                     eventTime: item.time.toISOString(),
                     triggerBeforeMinutes: triggerBeforeMinutes,
                 };
                 await addAlert(newAlert);
-                addNotification(`هشدار برای "${item.title}" ثبت شد.`, 'success');
+                addNotification(`هشدار برای "${item.event}" ثبت شد.`, 'success');
             } else {
                 addNotification("لطفا یک عدد معتبر وارد کنید.", 'error');
             }
         }
     };
 
+    const upcomingEvents = events.filter(e => e.time.getTime() > Date.now());
+
     return (
         <div>
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-gray-200 dark:bg-gray-700/50 mb-3">
-                {(['All', 'High', 'Medium', 'Low'] as FilterType[]).map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={`w-full px-2 py-1 rounded-md text-xs font-semibold transition-colors ${
-                            filter === f ? 'bg-white dark:bg-gray-800 shadow' : 'text-gray-600 dark:text-gray-300'
-                        }`}
-                    >
-                        {{'All': 'همه', 'High': 'مهم', 'Medium': 'متوسط', 'Low': 'کم'}[f]}
-                    </button>
-                ))}
-            </div>
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                {filteredNews.map(item => (
-                    <div key={item.id} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                        <div className="flex items-center gap-3">
-                            <ImportanceBadge importance={item.importance} />
-                            <span className="font-bold text-xs w-8">{item.currency}</span>
-                            <p className="truncate">{item.title}</p>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 5).map(item => (
+                    <div key={item.id} className="grid grid-cols-[auto,1fr,auto] items-center gap-3 text-sm p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                        <ImportanceIndicator importance={item.importance} />
+                        <div>
+                            <p className="font-semibold truncate flex items-center gap-2">
+                                <span title={item.countryCode}>{COUNTRY_FLAGS[item.countryCode]}</span>
+                                {item.event}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.currency} | {item.time.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             <Countdown targetDate={item.time} />
                             <button onClick={() => handleAddNewsAlert(item)} title="ایجاد هشدار" className="text-gray-400 hover:text-indigo-500 cursor-pointer">
                                 <Bell className="w-4 h-4" />
                             </button>
-                            <Pin className="w-4 h-4 text-gray-400 hover:text-indigo-500 cursor-pointer" />
                         </div>
                     </div>
-                ))}
+                )) : <p className="text-center text-sm text-gray-500 py-4">رویداد مهمی برای امروز باقی نمانده است.</p>}
             </div>
         </div>
     );

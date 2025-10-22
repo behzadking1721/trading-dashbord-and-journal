@@ -1,16 +1,17 @@
 export type Theme = 'light' | 'dark' | 'glass';
 
-export interface NewsItem {
+export interface EconomicEvent {
   id: string;
-  title: string;
   time: Date;
-  importance: 'High' | 'Medium' | 'Low';
   currency: string;
-  link: string;
-  actual?: string;
-  forecast?: string;
-  previous?: string;
+  countryCode: string; // e.g., 'US', 'EU', 'GB' for flags
+  importance: 'High' | 'Medium' | 'Low';
+  event: string;
+  actual: string | null;
+  forecast: string | null;
+  previous: string | null;
 }
+
 
 export type TradeOutcome = 'Take Profit' | 'Stop Loss' | 'Manual Exit';
 
