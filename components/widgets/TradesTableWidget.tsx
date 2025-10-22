@@ -39,6 +39,15 @@ const TradesTableWidget: React.FC = () => {
     return () => window.removeEventListener('journalUpdated', fetchTrades);
   }, []);
 
+  const formatNumber = (value: any, digits: number, prefix = ''): string => {
+    const num = Number(value);
+    if (value === null || value === undefined || isNaN(num)) {
+        return 'N/A';
+    }
+    return `${prefix}${num.toFixed(digits)}`;
+  };
+
+
   return (
     <div className="flex flex-col h-full">
         <div className="flex justify-between items-center mb-2">
@@ -71,10 +80,10 @@ const TradesTableWidget: React.FC = () => {
                       {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
                       {trade.side === 'Buy' ? 'خرید' : 'فروش'}
                   </td>
-                  <td className="px-4 py-2 font-mono">{trade.entryPrice.toFixed(4)}</td>
-                  <td className="px-4 py-2 font-mono">{trade.exitPrice?.toFixed(4)}</td>
-                  <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${trade.profitOrLoss.toFixed(2)}
+                  <td className="px-4 py-2 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
+                  <td className="px-4 py-2 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
+                  <td className={`px-4 py-2 font-bold font-mono ${Number(trade.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formatNumber(trade.profitOrLoss, 2, '$')}
                   </td>
                 </tr>
               )) : (

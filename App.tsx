@@ -8,6 +8,7 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 const JournalPage = lazy(() => import('./components/JournalPage'));
 const CalendarPage = lazy(() => import('./components/CalendarPage'));
 const SettingsPage = lazy(() => import('./components/SettingsPage'));
+const PerformanceAnalyticsPage = lazy(() => import('./components/PerformanceAnalyticsPage'));
 
 
 const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
@@ -15,6 +16,7 @@ const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
   '/journal': JournalPage,
   '/calendar': CalendarPage,
   '/settings': SettingsPage,
+  '/performance': PerformanceAnalyticsPage,
 };
 
 const App: React.FC = () => {

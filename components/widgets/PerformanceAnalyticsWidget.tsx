@@ -42,13 +42,16 @@ const PerformanceAnalyticsWidget: React.FC = () => {
                 return;
             };
 
-            const wins = entries.filter(e => e.status === 'Win').length;
+            const wins = entries.filter(e => Number(e.profitOrLoss) > 0).length;
             const winRate = entries.length > 0 ? (wins / entries.length) * 100 : 0;
 
-            const totalPnl = entries.reduce((acc, e) => acc + e.profitOrLoss, 0);
+            const totalPnl = entries.reduce((acc, e) => acc + Number(e.profitOrLoss || 0), 0);
 
-            const validRRTrades = entries.filter(e => e.riskRewardRatio > 0 && isFinite(e.riskRewardRatio));
-            const totalRR = validRRTrades.reduce((acc, e) => acc + e.riskRewardRatio, 0);
+            const validRRTrades = entries.filter(e => {
+                const rr = Number(e.riskRewardRatio);
+                return rr > 0 && isFinite(rr);
+            });
+            const totalRR = validRRTrades.reduce((acc, e) => acc + Number(e.riskRewardRatio || 0), 0);
             const avgRR = validRRTrades.length > 0 ? totalRR / validRRTrades.length : 0;
             
             setStats({ winRate, avgRR, totalPnl });

@@ -85,7 +85,7 @@ const JournalPage: React.FC = () => {
                                     {entry.side === 'Buy' ? 'خرید' : 'فروش'}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
-                                <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                <td className={`px-4 py-3 font-mono font-bold ${Number(entry.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     ${typeof entry.profitOrLoss === 'number' && !isNaN(entry.profitOrLoss) ? entry.profitOrLoss.toFixed(2) : '0.00'}
                                 </td>
                                 <td className="px-4 py-3 flex items-center gap-1">
@@ -131,7 +131,7 @@ const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بد
 
 const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> = ({ onClose, onSave }) => {
     const [formData, setFormData] = useState<Partial<JournalEntry>>({
-        symbol: '', side: 'Buy', entryPrice: undefined, stopLoss: undefined, takeProfit: undefined, exitPrice: undefined, setupId: '', emotions: [], mistakes: [], notesBefore: '', notesAfter: ''
+        symbol: '', side: 'Buy', entryPrice: undefined, stopLoss: undefined, takeProfit: undefined, exitPrice: undefined, positionSize: undefined, setupId: '', emotions: [], mistakes: [], notesBefore: '', notesAfter: ''
     });
     const [setups, setSetups] = useState<TradingSetup[]>([]);
     
@@ -146,7 +146,12 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const isNumberField = e.target instanceof HTMLInputElement && e.target.type === 'number';
+
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: isNumberField ? (value === '' ? undefined : parseFloat(value)) : value 
+        }));
     };
 
     const handleMultiSelect = (name: 'emotions' | 'mistakes', value: string) => {
@@ -159,9 +164,15 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { entryPrice, exitPrice, stopLoss, takeProfit, side, positionSize = 1 } = formData;
 
-        if (entryPrice === undefined || exitPrice === undefined || stopLoss === undefined || takeProfit === undefined) {
+        const entryPrice = Number(formData.entryPrice);
+        const exitPrice = Number(formData.exitPrice);
+        const stopLoss = Number(formData.stopLoss);
+        const takeProfit = Number(formData.takeProfit);
+        const positionSize = Number(formData.positionSize || 1);
+        const side = formData.side || 'Buy';
+
+        if (isNaN(entryPrice) || isNaN(exitPrice) || isNaN(stopLoss) || isNaN(takeProfit)) {
              alert('لطفاً تمام قیمت‌ها را به درستی وارد کنید.');
              return;
         }
@@ -179,15 +190,22 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
         const newEntry: JournalEntry = {
             id: new Date().toISOString(),
             date: new Date().toISOString(),
-            ...formData,
-            side: formData.side || 'Buy',
             symbol: formData.symbol || '',
-            entryPrice, exitPrice, stopLoss, takeProfit,
-            positionSize,
+            side: side,
+            entryPrice: entryPrice,
+            exitPrice: exitPrice,
+            stopLoss: stopLoss,
+            takeProfit: takeProfit,
+            positionSize: positionSize,
             profitOrLoss: isNaN(pnl) ? 0 : pnl,
             status,
             riskRewardRatio: isFinite(riskRewardRatio) && !isNaN(riskRewardRatio) ? riskRewardRatio : 0,
+            setupId: formData.setupId,
             setupName: selectedSetup?.name,
+            emotions: formData.emotions || [],
+            mistakes: formData.mistakes || [],
+            notesBefore: formData.notesBefore || '',
+            notesAfter: formData.notesAfter || '',
         };
         
         try {
@@ -217,10 +235,11 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; }> =
                                 <option value="Buy">خرید (Buy)</option>
                                 <option value="Sell">فروش (Sell)</option>
                             </select>
-                            <input type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.entryPrice || ''} onChange={handleChange}/>
-                            <input type="number" name="exitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.exitPrice || ''} onChange={handleChange}/>
-                            <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.stopLoss || ''} onChange={handleChange}/>
-                            <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.takeProfit || ''} onChange={handleChange}/>
+                            <input type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>
+                            <input type="number" name="exitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.exitPrice === undefined ? '' : formData.exitPrice} onChange={handleChange}/>
+                            <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
+                            <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>
+                            <input type="number" name="positionSize" step="any" placeholder="حجم معامله" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
                         </div>
                     </fieldset>
                     

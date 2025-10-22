@@ -27,7 +27,7 @@ const WalletOverviewWidget: React.FC = () => {
                 setBalance(currentBalance);
 
                 const entries = await getJournalEntries();
-                const totalPnl = entries.reduce((acc, entry) => acc + entry.profitOrLoss, 0);
+                const totalPnl = entries.reduce((acc, entry) => acc + Number(entry.profitOrLoss || 0), 0);
                 setEquity(currentBalance + totalPnl);
             } catch (error) {
                 console.error("Failed to update wallet overview:", error);
