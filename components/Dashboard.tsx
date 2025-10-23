@@ -69,6 +69,8 @@ const Dashboard: React.FC = () => {
                         {renderWidget('ai_summary')}
                         {renderWidget('sessions_clock')}
                         {renderWidget('forex_news')}
+                        {renderWidget('weather')}
+                        {renderWidget('hafez_fortune')}
                     </div>
                 </section>
             </main>
