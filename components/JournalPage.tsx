@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
-import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter } from '../types';
+import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
 // FIX: Import the AlertTriangle icon from lucide-react.
 import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info } from 'lucide-react';
@@ -7,6 +7,9 @@ import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkle
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 
 const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
+const EMOTIONS_BEFORE: EmotionBefore[] = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
+const ENTRY_REASONS: EntryReason[] = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
+const EMOTIONS_AFTER: EmotionAfter[] = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
 
 const JournalPage: React.FC = () => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -149,9 +152,6 @@ const JournalPage: React.FC = () => {
     );
 };
 
-const EMOTIONS_BEFORE: EmotionBefore[] = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
-const ENTRY_REASONS: EntryReason[] = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
-const EMOTIONS_AFTER: EmotionAfter[] = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
 
 interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
     outcome?: TradeOutcome;
@@ -159,8 +159,10 @@ interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
 }
 
 const DRAFT_KEY = 'journal_form_draft';
+const STORAGE_KEY_FORM_SETTINGS = 'journal-form-settings';
 
 const initialEmptyState: FormState = {
+    date: new Date().toISOString(),
     symbol: '',
     entryPrice: undefined,
     stopLoss: undefined,
@@ -177,31 +179,45 @@ const initialEmptyState: FormState = {
     imageUrl: undefined,
 };
 
+// Helper to set nested properties
+const setNestedValue = (obj: any, path: string, value: any) => {
+    const keys = path.split('.');
+    let current = obj;
+    for (let i = 0; i < keys.length - 1; i++) {
+        if (current[keys[i]] === undefined || typeof current[keys[i]] !== 'object') {
+            current[keys[i]] = {};
+        }
+        current = current[keys[i]];
+    }
+    current[keys[keys.length - 1]] = value;
+};
+
 
 const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entry: JournalEntry | null; }> = ({ onClose, onSave, entry }) => {
-    const getInitialState = (): FormState => {
+    const [formSettings, setFormSettings] = useState<JournalFormSettings>({});
+    
+    const getInitialState = useCallback((): FormState => {
         if (entry) {
             return {
-                symbol: entry.symbol || '', 
-                entryPrice: entry.entryPrice, 
-                stopLoss: entry.stopLoss, 
-                takeProfit: entry.takeProfit,
-                positionSize: entry.positionSize,
-                setupId: entry.setupId || '', 
-                tags: entry.tags || [], 
-                psychology: entry.psychology || {},
-                mistakes: entry.mistakes || [], 
-                notesBefore: entry.notesBefore || '', 
-                notesAfter: entry.notesAfter || '', 
-                outcome: entry.outcome || 'Manual Exit', 
+                ...initialEmptyState,
+                ...entry,
                 manualExitPrice: entry.outcome === 'Manual Exit' ? entry.exitPrice : undefined,
-                imageUrl: entry.imageUrl,
             };
         }
-        return initialEmptyState;
-    };
+
+        // For new entry, apply defaults from settings
+        const stateFromDefaults = { ...initialEmptyState };
+        Object.keys(formSettings).forEach(key => {
+            const fieldKey = key as JournalFormField;
+            const setting = formSettings[fieldKey];
+            if (setting?.isActive && setting.defaultValue !== undefined) {
+                setNestedValue(stateFromDefaults, fieldKey, setting.defaultValue);
+            }
+        });
+        return stateFromDefaults;
+    }, [entry, formSettings]);
     
-    const [formData, setFormData] = useState<FormState>(getInitialState());
+    const [formData, setFormData] = useState<FormState>(initialEmptyState);
     const [draftLoaded, setDraftLoaded] = useState(false);
     
     const [manualSide, setManualSide] = useState<'Buy' | 'Sell' | null>(entry?.side || null);
@@ -221,13 +237,25 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     useEffect(() => {
         const loadInitialData = async () => {
              try {
+                // Load Form Settings
+                const savedFormSettings = localStorage.getItem(STORAGE_KEY_FORM_SETTINGS);
+                const loadedSettings: JournalFormSettings = savedFormSettings ? JSON.parse(savedFormSettings) : {};
+                setFormSettings(loadedSettings);
+                
+                // Set initial state based on settings AFTER they are loaded
+                const initialState = getInitialState();
+
                 // Load draft for new entries only
                 if (!entry) {
                     const savedDraft = localStorage.getItem(DRAFT_KEY);
                     if (savedDraft) {
                         setFormData(JSON.parse(savedDraft));
                         setDraftLoaded(true);
+                    } else {
+                         setFormData(initialState);
                     }
+                } else {
+                    setFormData(initialState);
                 }
 
                 const savedSetups = localStorage.getItem('trading-setups');
@@ -252,7 +280,12 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [entry, getInitialState]); // Rerun if entry changes
+
+    // Re-initialize form state when settings are loaded for the first time
+    useEffect(() => {
+        setFormData(getInitialState());
+    }, [formSettings, getInitialState]);
 
     // Autosave draft for new entries
     useEffect(() => {
@@ -260,7 +293,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
              try {
                 const isFormEmpty = Object.keys(formData).every(key => {
                     const value = formData[key as keyof FormState];
-                    // Compare against initial empty state to see if it's "empty"
                     const initialValue = initialEmptyState[key as keyof FormState];
                     return JSON.stringify(value) === JSON.stringify(initialValue);
                 });
@@ -270,9 +302,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 } else {
                     localStorage.removeItem(DRAFT_KEY); // Clean up if form becomes empty
                 }
-            } catch (e) {
-                console.warn("Could not save draft to localStorage.", e);
-            }
+            } catch (e) { console.warn("Could not save draft to localStorage.", e); }
         }
     }, [formData, entry]);
 
@@ -383,7 +413,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
 
             const avgSlDistance = totalSlDistance / symbolEntries.length;
             
-            // Heuristic to check if it's a forex pair to show pips
             const isForex = ['usd', 'eur', 'gbp', 'jpy', 'chf', 'cad', 'aud', 'nzd'].some(c => formData.symbol!.toLowerCase().includes(c));
             const pips = avgSlDistance * (formData.symbol!.toLowerCase().includes('jpy') ? 100 : 10000);
 
@@ -488,7 +517,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         else if(outcome === 'Stop Loss') finalExitPrice = stopLoss;
         else if(outcome === 'Manual Exit') finalExitPrice = manualExitPrice;
 
-        if (!entry || (entry && outcome !== entry.outcome)) { // If it's a new entry or outcome changed, calculate pnl
+        if (!entry || (entry && outcome !== entry.outcome)) {
             if (finalExitPrice === undefined) {
                  alert('برای این نوع خروج، قیمت خروج دستی الزامی است.');
                  return;
@@ -503,9 +532,10 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         const selectedSetup = setups.find(s => s.id === setupId);
 
         const newEntry: JournalEntry = {
+            ...initialEmptyState,
+            ...formData,
             id: entry?.id || new Date().toISOString(), 
             date: entry?.date || new Date().toISOString(),
-            ...formData,
             symbol: formData.symbol || '',
             side: effectiveSide,
             entryPrice: entryPrice!,
@@ -556,7 +586,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                         <span><strong className="ml-1">R/R:</strong>{calculations.rr}</span>
                         <span><strong className="ml-1">ریسک:</strong>{calculations.riskPercent}</span>
                         <span className={effectiveSide === 'Buy' ? 'text-green-500' : 'text-red-500'}><strong className="ml-1 text-gray-800 dark:text-gray-200">PnL:</strong>{calculations.potentialPnl}</span>
-                        {/* FIX: Wrapped the AlertTriangle icon in a span with a title attribute to provide a tooltip, as the icon component itself doesn't accept a 'title' prop. */}
                         {!calculations.isValid && detectedSide && <span title="مقادیر نامعتبر"><AlertTriangle size={16} className="text-red-500" /></span>}
                     </div>
 
@@ -569,9 +598,9 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                             </div>
                         )}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            <input type="text" name="symbol" placeholder="نماد" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol} onChange={handleChange} autoFocus />
-                            <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>
-                            <div className="relative">
+                           {formSettings.symbol?.isActive && <input type="text" name="symbol" placeholder="نماد" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol} onChange={handleChange} autoFocus />}
+                           {formSettings.entryPrice?.isActive && <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>}
+                           {formSettings.stopLoss?.isActive && <div className="relative">
                                 <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
                                 {slSuggestion !== null && (
                                      <div className="absolute -bottom-6 left-0 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -580,12 +609,12 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                                         <button type="button" onClick={applySlSuggestion} className="text-indigo-500 hover:underline">اعمال</button>
                                     </div>
                                 )}
-                            </div>
-                            <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>
-                            <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
+                            </div>}
+                           {formSettings.takeProfit?.isActive && <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>}
+                           {formSettings.positionSize?.isActive && <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>}
                         </div>
 
-                        <fieldset className="border p-4 rounded-md dark:border-gray-600">
+                        {formSettings.outcome?.isActive && <fieldset className="border p-4 rounded-md dark:border-gray-600">
                             <legend className="px-2 font-semibold text-sm">نتیجه معامله</legend>
                             <div className="grid grid-cols-2 gap-4">
                                  <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome} onChange={handleChange}>
@@ -597,10 +626,9 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                                     <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
                                 )}
                             </div>
-                        </fieldset>
+                        </fieldset>}
                         
-                        {/* Image Upload */}
-                        <div className="border border-dashed dark:border-gray-600 rounded-lg p-4 text-center">
+                        {formSettings.imageUrl?.isActive && <div className="border border-dashed dark:border-gray-600 rounded-lg p-4 text-center">
                             {!formData.imageUrl ? (
                                 <>
                                     <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
@@ -618,24 +646,23 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                                     </button>
                                 </div>
                             )}
-                        </div>
+                        </div>}
                         
-                        {/* Psychological Analysis (Collapsible) */}
                          <div className="border rounded-md dark:border-gray-600">
                             <button type="button" onClick={togglePsychoAnalysis} className="flex justify-between items-center w-full p-4 text-right">
                                 <div className="flex items-center gap-2"><Brain size={18} className="text-indigo-500" /><span className="font-semibold text-sm">تحلیل روانشناسی و استراتژی (اختیاری)</span></div>
                                 <ChevronDown className={`w-5 h-5 transition-transform ${isPsychoAnalysisOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isPsychoAnalysisOpen && <div className="p-4 border-t dark:border-gray-600 space-y-4">
-                                <div><label className="block text-sm font-medium mb-2">ستاپ معاملاتی</label><select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                                {formSettings.setupId?.isActive && <div><label className="block text-sm font-medium mb-2">ستاپ معاملاتی</label><select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     <div><label className="block text-sm font-medium mb-1">احساس قبل از ورود</label><select name="emotionBefore" value={formData.psychology?.emotionBefore || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                                     <div><label className="block text-sm font-medium mb-1">انگیزه ورود</label><select name="entryReason" value={formData.psychology?.entryReason || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                                     <div><label className="block text-sm font-medium mb-1">احساس بعد از خروج</label><select name="emotionAfter" value={formData.psychology?.emotionAfter || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                                     {formSettings['psychology.emotionBefore']?.isActive && <div><label className="block text-sm font-medium mb-1">احساس قبل از ورود</label><select name="emotionBefore" value={formData.psychology?.emotionBefore || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
+                                     {formSettings['psychology.entryReason']?.isActive && <div><label className="block text-sm font-medium mb-1">انگیزه ورود</label><select name="entryReason" value={formData.psychology?.entryReason || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
+                                     {formSettings['psychology.emotionAfter']?.isActive && <div><label className="block text-sm font-medium mb-1">احساس بعد از خروج</label><select name="emotionAfter" value={formData.psychology?.emotionAfter || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
                                 </div>
 
-                                <div>
+                                {formSettings.tags?.isActive && <div>
                                     <label className="block text-sm font-medium mb-2">تگ‌ها</label>
                                     <div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                                         {formData.tags?.map(tag => (
@@ -644,31 +671,20 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                                                 <button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button>
                                             </div>
                                         ))}
-                                        <input 
-                                            type="text" 
-                                            value={tagInput}
-                                            onChange={(e) => setTagInput(e.target.value)}
-                                            onKeyDown={handleTagInputKeyDown}
-                                            placeholder="افزودن تگ..."
-                                            className="bg-transparent focus:outline-none flex-grow"
-                                            list="tag-suggestions"
-                                        />
-                                        <datalist id="tag-suggestions">
-                                            {allTags.filter(t => !formData.tags?.includes(t) && t.toLowerCase().includes(tagInput.toLowerCase())).map(t => <option key={t} value={t} />)}
-                                        </datalist>
+                                        <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagInputKeyDown} placeholder="افزودن تگ..." className="bg-transparent focus:outline-none flex-grow" list="tag-suggestions" />
+                                        <datalist id="tag-suggestions">{allTags.filter(t => !formData.tags?.includes(t) && t.toLowerCase().includes(tagInput.toLowerCase())).map(t => <option key={t} value={t} />)}</datalist>
                                     </div>
                                     {suggestedTags.length > 0 && <div className="flex flex-wrap gap-1 mt-2">
                                         <span className="text-xs text-gray-500">پیشنهاد هوشمند:</span>
-                                        {suggestedTags.map(tag => (
-                                            <button key={tag} type="button" onClick={() => handleAddTag(tag)} className="px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 rounded-full hover:bg-teal-200 dark:hover:bg-teal-700">
-                                                {tag}
-                                            </button>
-                                        ))}
+                                        {suggestedTags.map(tag => ( <button key={tag} type="button" onClick={() => handleAddTag(tag)} className="px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 rounded-full hover:bg-teal-200 dark:hover:bg-teal-700">{tag}</button>))}
                                     </div>}
-                                </div>
+                                </div>}
                                 
-                                <div><label className="block text-sm font-medium mb-2">اشتباهات</label><div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('mistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${formData.mistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea><textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea></div>
+                                {formSettings.mistakes?.isActive && <div><label className="block text-sm font-medium mb-2">اشتباهات</label><div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('mistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${formData.mistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div></div>}
+                                {(formSettings.notesBefore?.isActive || formSettings.notesAfter?.isActive) && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {formSettings.notesBefore?.isActive && <textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>}
+                                    {formSettings.notesAfter?.isActive && <textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>}
+                                </div>}
                             </div>}
                         </div>
                     </div>

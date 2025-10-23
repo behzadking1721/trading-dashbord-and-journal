@@ -127,3 +127,20 @@ export interface RiskSettings {
         maxRisk: number;
     };
 }
+
+// --- Journal Form Settings ---
+export type JournalFormField =
+    | 'symbol'
+    | 'entryPrice' | 'stopLoss' | 'takeProfit' | 'positionSize'
+    | 'outcome' | 'setupId' | 'imageUrl'
+    | 'psychology.emotionBefore' | 'psychology.entryReason' | 'psychology.emotionAfter'
+    | 'tags' | 'mistakes' | 'notesBefore' | 'notesAfter';
+
+export interface FormFieldSetting {
+    isActive: boolean;
+    defaultValue?: any;
+}
+
+export type JournalFormSettings = {
+    [key in JournalFormField]?: FormFieldSetting;
+};
