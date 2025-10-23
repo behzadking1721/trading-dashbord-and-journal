@@ -1,5 +1,4 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-// FIX: Import the AlertStatus type to be used in function signatures.
 import type { JournalEntry, Alert, AlertStatus } from './types';
 
 const DB_NAME = 'trading-journal-db';
@@ -41,8 +40,6 @@ const getDb = () => {
   });
 };
 
-// This function ensures that numeric fields are actual numbers.
-// Data from localStorage or older DB versions might store numbers as strings.
 const coerceEntry = (entry: any): JournalEntry => {
     const numberFields: (keyof JournalEntry)[] = [
         'entryPrice', 'exitPrice', 'stopLoss', 'takeProfit',
@@ -54,8 +51,9 @@ const coerceEntry = (entry: any): JournalEntry => {
     for (const field of numberFields) {
         if (coercedEntry[field] !== undefined && coercedEntry[field] !== null) {
             const num = parseFloat(coercedEntry[field]);
-            // Default to 0 if parsing fails to prevent NaN issues downstream
-            coercedEntry[field] = isNaN(num) ? 0 : num;
+            coercedEntry[field] = isNaN(num) ? undefined : num;
+        } else {
+             coercedEntry[field] = undefined;
         }
     }
 
@@ -69,7 +67,6 @@ const dispatchUpdate = () => {
 
 export const addJournalEntry = async (entry: JournalEntry) => {
   const db = await getDb();
-  // Coerce on write to ensure data integrity in the DB
   await db.put(JOURNAL_STORE, coerceEntry(entry));
   dispatchUpdate();
 };
@@ -78,10 +75,10 @@ export const getJournalEntries = async (): Promise<JournalEntry[]> => {
   try {
     const db = await getDb();
     const entries = await db.getAll(JOURNAL_STORE);
-    return entries.map(coerceEntry); // Coerce on read for safety
+    return entries.map(coerceEntry);
   } catch (error) {
     console.error("Failed to get journal entries:", error);
-    return []; // Return empty array on error to prevent crashes
+    return [];
   }
 };
 
@@ -91,7 +88,7 @@ export const getEntriesBySymbol = async (symbol: string): Promise<JournalEntry[]
         const db = await getDb();
         const entries = await db.getAll(JOURNAL_STORE);
         return entries
-            .filter(e => e.symbol.toLowerCase() === symbol.toLowerCase())
+            .filter(e => e.symbol && e.symbol.toLowerCase() === symbol.toLowerCase())
             .map(coerceEntry);
     } catch (error) {
         console.error(`Failed to get entries for symbol ${symbol}:`, error);
@@ -121,7 +118,7 @@ export const getLatestJournalEntries = async (limit: number): Promise<JournalEnt
     const db = await getDb();
     const allEntries = await db.getAll(JOURNAL_STORE);
     return allEntries
-      .map(coerceEntry) // Coerce on read for safety
+      .map(coerceEntry)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
   } catch (error) {

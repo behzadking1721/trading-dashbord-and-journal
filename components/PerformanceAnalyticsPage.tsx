@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-// FIX: Import the `Time` type from lightweight-charts to correctly type chart data.
 import { createChart, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
@@ -31,7 +30,6 @@ const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string
 
 const PerformanceAnalyticsPage: React.FC = () => {
     const [stats, setStats] = useState<Stats | null>(null);
-    // FIX: Use the `Time` type for the time property to match lightweight-charts' expected data structure.
     const [equityData, setEquityData] = useState<{ time: Time, value: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -45,11 +43,14 @@ const PerformanceAnalyticsPage: React.FC = () => {
             const savedBalance = localStorage.getItem('accountBalance') || '10000';
             const initialBalance = parseFloat(savedBalance);
 
-            const entries = (await getJournalEntries()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            const allDbEntries = await getJournalEntries();
+            const entries = allDbEntries
+                .filter(e => e.profitOrLoss != null) // Only include closed trades
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             
             if (entries.length === 0) {
                 setStats(null);
-                setEquityData([]);
+                setEquityData([{ time: Math.floor(Date.now() / 1000) as Time, value: initialBalance }]);
                 setLoading(false);
                 return;
             }
@@ -58,20 +59,17 @@ const PerformanceAnalyticsPage: React.FC = () => {
             let peakEquity = initialBalance;
             let maxDrawdown = 0;
             
-            // Use a timestamp slightly before the first trade for the initial point
             const firstTradeTimestamp = Math.floor(new Date(entries[0].date).getTime() / 1000);
-            // FIX: Ensure the data structure matches the state type by casting timestamps to `Time`.
-            const newEquityData: { time: Time, value: number }[] = [{ time: (firstTradeTimestamp - 60) as Time, value: initialBalance }];
+            const newEquityData: { time: Time, value: number }[] = [{ time: (firstTradeTimestamp - 3600) as Time, value: initialBalance }];
 
-
-            const wins = entries.filter(e => Number(e.profitOrLoss) > 0);
-            const losses = entries.filter(e => Number(e.profitOrLoss) < 0);
+            const wins = entries.filter(e => e.profitOrLoss! > 0);
+            const losses = entries.filter(e => e.profitOrLoss! < 0);
             
-            const totalProfit = wins.reduce((acc, e) => acc + Number(e.profitOrLoss || 0), 0);
-            const totalLoss = Math.abs(losses.reduce((acc, e) => acc + Number(e.profitOrLoss || 0), 0));
+            const totalProfit = wins.reduce((acc, e) => acc + e.profitOrLoss!, 0);
+            const totalLoss = Math.abs(losses.reduce((acc, e) => acc + e.profitOrLoss!, 0));
 
             for (const entry of entries) {
-                currentEquity += Number(entry.profitOrLoss || 0);
+                currentEquity += entry.profitOrLoss!;
                 if (currentEquity > peakEquity) {
                     peakEquity = currentEquity;
                 }
@@ -79,9 +77,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 if (drawdown > maxDrawdown) {
                     maxDrawdown = drawdown;
                 }
-                // Use precise timestamp (in seconds) for each trade
                 const timestamp = Math.floor(new Date(entry.date).getTime() / 1000);
-                // FIX: Ensure the data structure matches the state type by casting timestamps to `Time`.
                 newEquityData.push({ time: timestamp as Time, value: currentEquity });
             }
             
@@ -95,8 +91,8 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 maxDrawdown: maxDrawdown,
                 avgWin: wins.length > 0 ? totalProfit / wins.length : 0,
                 avgLoss: losses.length > 0 ? totalLoss / losses.length : 0,
-                largestWin: Math.max(0, ...wins.map(e => Number(e.profitOrLoss || 0))),
-                largestLoss: Math.min(0, ...losses.map(e => Number(e.profitOrLoss || 0))),
+                largestWin: Math.max(0, ...wins.map(e => e.profitOrLoss!)),
+                largestLoss: Math.min(0, ...losses.map(e => e.profitOrLoss!)),
             });
 
         } catch (error) {
@@ -113,17 +109,19 @@ const PerformanceAnalyticsPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!chartContainerRef.current || equityData.length < 2) {
-             if(chartRef.current) {
-                chartRef.current.remove();
-                chartRef.current = null;
-            }
+        if (!chartContainerRef.current) return;
+        
+        if (equityData.length < 2 && chartRef.current) {
+            chartRef.current.remove();
+            chartRef.current = null;
             return;
-        };
+        }
+        
+        if (equityData.length < 2) return;
 
         const handleResize = () => {
             if (chartRef.current) {
-                chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+                chartRef.current.applyOptions({ width: chartContainerRef.current!.clientWidth });
             }
         };
 
@@ -134,8 +132,6 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             // FIX: Cast chartRef.current to 'any' to bypass potential type mismatch issues
-             // in the lightweight-charts library where addAreaSeries is not found on IChartApi.
              seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
@@ -153,13 +149,13 @@ const PerformanceAnalyticsPage: React.FC = () => {
         const color = lastValue >= firstValue ? '#22c55e' : '#ef4444';
         const topColor = lastValue >= firstValue ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)';
 
-        seriesRef.current.applyOptions({
+        seriesRef.current!.applyOptions({
             lineColor: color,
             topColor: topColor,
             bottomColor: 'rgba(255, 255, 255, 0)',
         });
         
-        seriesRef.current.setData(equityData);
+        seriesRef.current!.setData(equityData);
         chartRef.current.timeScale().fitContent();
 
         window.addEventListener('resize', handleResize);
@@ -176,7 +172,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
         return (
             <div className="p-6 text-center">
                 <h1 className="text-2xl font-bold mb-4">تحلیل عملکرد</h1>
-                <p className="text-gray-500">هیچ معامله‌ای برای تحلیل یافت نشد. لطفاً ابتدا معاملاتی را در ژورنال خود ثبت کنید.</p>
+                <p className="text-gray-500">هیچ معامله بسته‌شده‌ای برای تحلیل یافت نشد. لطفاً ابتدا معاملاتی را در ژورنال خود ثبت و نتیجه آن‌ها را مشخص کنید.</p>
             </div>
         );
     }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
 import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
-// FIX: Import the AlertTriangle icon from lucide-react.
 import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
@@ -90,10 +89,10 @@ const JournalPage: React.FC = () => {
                         {entries.length > 0 ? entries.map(entry => (
                             <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
                                 <td className="px-4 py-3 font-mono">{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
-                                <td className="px-4 py-3 font-semibold">{entry.symbol.toUpperCase()}</td>
-                                <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
-                                    {entry.side === 'Buy' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                                    {entry.side === 'Buy' ? 'خرید' : 'فروش'}
+                                <td className="px-4 py-3 font-semibold">{entry.symbol?.toUpperCase() || '-'}</td>
+                                <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : entry.side === 'Sell' ? 'text-red-500' : ''}`}>
+                                    {entry.side === 'Buy' ? <TrendingUp size={16} /> : entry.side === 'Sell' ? <TrendingDown size={16} /> : null}
+                                    {entry.side === 'Buy' ? 'خرید' : entry.side === 'Sell' ? 'فروش' : '-'}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
                                 <td className="px-4 py-3">
@@ -103,8 +102,8 @@ const JournalPage: React.FC = () => {
                                         ))}
                                     </div>
                                 </td>
-                                <td className={`px-4 py-3 font-mono font-bold ${Number(entry.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    ${typeof entry.profitOrLoss === 'number' && !isNaN(entry.profitOrLoss) ? entry.profitOrLoss.toFixed(2) : '0.00'}
+                                 <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss == null ? '' : entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {entry.profitOrLoss != null ? `$${entry.profitOrLoss.toFixed(2)}` : <span className="text-blue-500">باز</span>}
                                 </td>
                                 <td className="px-4 py-3 flex items-center gap-1">
                                     {entry.imageUrl && (
@@ -112,9 +111,11 @@ const JournalPage: React.FC = () => {
                                             <Camera size={16} />
                                         </a>
                                     )}
-                                    <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
-                                        <LineChart size={16} />
-                                    </button>
+                                    {entry.entryPrice && (
+                                        <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
+                                            <LineChart size={16} />
+                                        </button>
+                                    )}
                                      <button onClick={() => handleOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
                                         <Edit2 size={16} />
                                     </button>
@@ -184,7 +185,7 @@ const setNestedValue = (obj: any, path: string, value: any) => {
     const keys = path.split('.');
     let current = obj;
     for (let i = 0; i < keys.length - 1; i++) {
-        if (current[keys[i]] === undefined || typeof current[keys[i]] !== 'object') {
+        if (current[keys[i]] === undefined || typeof current[keys[i]] !== 'object' || current[keys[i]] === null) {
             current[keys[i]] = {};
         }
         current = current[keys[i]];
@@ -201,12 +202,11 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
             return {
                 ...initialEmptyState,
                 ...entry,
-                manualExitPrice: entry.outcome === 'Manual Exit' ? entry.exitPrice : undefined,
+                manualExitPrice: entry.outcome === 'Manual Exit' && entry.exitPrice ? entry.exitPrice : undefined,
             };
         }
 
-        // For new entry, apply defaults from settings
-        const stateFromDefaults = { ...initialEmptyState };
+        const stateFromDefaults: FormState = { ...initialEmptyState, psychology: {} };
         Object.keys(formSettings).forEach(key => {
             const fieldKey = key as JournalFormField;
             const setting = formSettings[fieldKey];
@@ -237,29 +237,12 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     useEffect(() => {
         const loadInitialData = async () => {
              try {
-                // Load Form Settings
                 const savedFormSettings = localStorage.getItem(STORAGE_KEY_FORM_SETTINGS);
-                const loadedSettings: JournalFormSettings = savedFormSettings ? JSON.parse(savedFormSettings) : {};
-                setFormSettings(loadedSettings);
-                
-                // Set initial state based on settings AFTER they are loaded
-                const initialState = getInitialState();
-
-                // Load draft for new entries only
-                if (!entry) {
-                    const savedDraft = localStorage.getItem(DRAFT_KEY);
-                    if (savedDraft) {
-                        setFormData(JSON.parse(savedDraft));
-                        setDraftLoaded(true);
-                    } else {
-                         setFormData(initialState);
-                    }
-                } else {
-                    setFormData(initialState);
-                }
+                setFormSettings(savedFormSettings ? JSON.parse(savedFormSettings) : {});
 
                 const savedSetups = localStorage.getItem('trading-setups');
                 if (savedSetups) setSetups(JSON.parse(savedSetups));
+                
                 const savedRiskSettings = localStorage.getItem('risk-management-settings');
                  if (savedRiskSettings) {
                     setRiskSettings(JSON.parse(savedRiskSettings));
@@ -280,28 +263,27 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [entry, getInitialState]); // Rerun if entry changes
+    }, []);
 
-    // Re-initialize form state when settings are loaded for the first time
     useEffect(() => {
-        setFormData(getInitialState());
-    }, [formSettings, getInitialState]);
+        const initialState = getInitialState();
+        if (!entry) {
+            const savedDraft = localStorage.getItem(DRAFT_KEY);
+            if (savedDraft) {
+                setFormData(JSON.parse(savedDraft));
+                setDraftLoaded(true);
+            } else {
+                 setFormData(initialState);
+            }
+        } else {
+            setFormData(initialState);
+        }
+    }, [entry, formSettings, getInitialState]);
 
-    // Autosave draft for new entries
     useEffect(() => {
         if (!entry) {
              try {
-                const isFormEmpty = Object.keys(formData).every(key => {
-                    const value = formData[key as keyof FormState];
-                    const initialValue = initialEmptyState[key as keyof FormState];
-                    return JSON.stringify(value) === JSON.stringify(initialValue);
-                });
-
-                if (!isFormEmpty) {
-                    localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-                } else {
-                    localStorage.removeItem(DRAFT_KEY); // Clean up if form becomes empty
-                }
+                 localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
             } catch (e) { console.warn("Could not save draft to localStorage.", e); }
         }
     }, [formData, entry]);
@@ -319,7 +301,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
 
     const calculations = useMemo(() => {
         const { entryPrice, stopLoss, takeProfit, positionSize = 1 } = formData;
-        if (!entryPrice || !stopLoss || !takeProfit || !riskSettings || !effectiveSide) {
+        if (entryPrice == null || stopLoss == null || takeProfit == null || !riskSettings || !effectiveSide) {
             return { rr: 'N/A', riskPercent: 'N/A', potentialPnl: 'N/A', isValid: false };
         }
         
@@ -355,7 +337,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         if (formData.symbol?.toLowerCase().includes('jpy')) {
             suggestions.add('ین ژاپن');
         }
-        // Simple check for NY session (13-22 UTC)
         const currentUTCHour = new Date().getUTCHours();
         if (currentUTCHour >= 13 && currentUTCHour < 22) {
             suggestions.add('جلسه نیویورک');
@@ -363,7 +344,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         return Array.from(suggestions).filter(t => !formData.tags?.includes(t));
     }, [formData.symbol, calculations.rr, formData.tags]);
 
-    // Auto-populate form based on selected setup
     useEffect(() => {
         if (!formData.setupId) return;
 
@@ -380,8 +360,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         
         setFormData(prev => ({ ...prev, ...updates }));
 
-        // Auto-calculate TP based on setup's R/R
-        if (selectedSetup.defaultRiskRewardRatio && formData.entryPrice && formData.stopLoss && effectiveSide) {
+        if (selectedSetup.defaultRiskRewardRatio && formData.entryPrice != null && formData.stopLoss != null && effectiveSide) {
             const riskDistance = Math.abs(formData.entryPrice - formData.stopLoss);
             const rewardDistance = riskDistance * selectedSetup.defaultRiskRewardRatio;
             const newTakeProfit = effectiveSide === 'Buy' 
@@ -391,9 +370,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
             setFormData(prev => ({ ...prev, takeProfit: newTakeProfit }));
         }
 
-    }, [formData.setupId, effectiveSide]);
+    }, [formData.setupId, effectiveSide, setups, formData.entryPrice, formData.stopLoss, formData.tags, formData.mistakes]);
 
-    // Generate SL suggestion based on symbol history
     useEffect(() => {
         const getSuggestion = async () => {
             if (!formData.symbol || formData.symbol.length < 4) {
@@ -407,7 +385,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
             }
 
             const totalSlDistance = symbolEntries.reduce((sum, entry) => {
-                const distance = Math.abs(entry.entryPrice - entry.stopLoss);
+                const distance = Math.abs((entry.entryPrice || 0) - (entry.stopLoss || 0));
                 return sum + distance;
             }, 0);
 
@@ -425,7 +403,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     }, [formData.symbol]);
 
     const applySlSuggestion = () => {
-        if (!slSuggestion || !formData.entryPrice || !effectiveSide) return;
+        if (slSuggestion == null || formData.entryPrice == null || !effectiveSide) return;
 
         const isJpyPair = formData.symbol!.toLowerCase().includes('jpy');
         const distance = slSuggestion / (isJpyPair ? 100 : 10000);
@@ -437,7 +415,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         setFormData(prev => ({ ...prev, stopLoss: newStopLoss }));
     };
 
-
     const togglePsychoAnalysis = () => setIsPsychoAnalysisOpen(p => !p);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -448,26 +425,18 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     
     const handlePsychologyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            psychology: {
-                ...prev.psychology,
-                [name]: value,
-            }
-        }));
+        setFormData(prev => ({ ...prev, psychology: { ...prev.psychology, [name]: value } }));
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        if (file.size > 2 * 1024 * 1024) {
             alert("حجم تصویر باید کمتر از ۲ مگابایت باشد.");
             return;
         }
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-        };
+        reader.onloadend = () => setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
         reader.readAsDataURL(file);
     };
 
@@ -481,9 +450,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         setTagInput('');
     };
 
-    const handleRemoveTag = (tagToRemove: string) => {
-        setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(tag => tag !== tagToRemove) }));
-    };
+    const handleRemoveTag = (tagToRemove: string) => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(tag => tag !== tagToRemove) }));
 
     const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' || e.key === ',') {
@@ -493,11 +460,9 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     };
     
     const handleDiscardDraft = () => {
-        if (window.confirm('آیا از حذف پیش‌نویس مطمئن هستید؟ اطلاعات وارد شده پاک خواهد شد.')) {
-            try {
-                localStorage.removeItem(DRAFT_KEY);
-            } catch(e) { console.error(e) }
-            setFormData(initialEmptyState);
+        if (window.confirm('آیا از حذف پیش‌نویس مطمئن هستید؟')) {
+            try { localStorage.removeItem(DRAFT_KEY); } catch(e) { console.error(e) }
+            setFormData(getInitialState());
             setDraftLoaded(false);
         }
     };
@@ -505,57 +470,57 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const handleSubmit = async (e: React.FormEvent | KeyboardEvent) => {
         e.preventDefault();
         
-        if (!effectiveSide || !calculations.isValid) {
-            alert('اطلاعات معامله (قیمت‌ها) نامعتبر است. لطفاً ورودی خود را بررسی کنید.');
+        if (formSettings.symbol?.isActive && !formData.symbol) {
+            alert('نماد الزامی است.');
             return;
         }
 
-        const { entryPrice, stopLoss, takeProfit, positionSize = 1, setupId, outcome, manualExitPrice } = formData;
-        
-        let finalExitPrice: number | undefined;
-        if(outcome === 'Take Profit') finalExitPrice = takeProfit;
-        else if(outcome === 'Stop Loss') finalExitPrice = stopLoss;
-        else if(outcome === 'Manual Exit') finalExitPrice = manualExitPrice;
+        const pricesProvided = formData.entryPrice != null && formData.stopLoss != null && formData.takeProfit != null;
+        if (formSettings.entryPrice?.isActive && pricesProvided && (!effectiveSide || !calculations.isValid)) {
+            alert('اطلاعات قیمت‌ها نامعتبر است (مثلاً حد سود یا ضرر در سمت اشتباه قیمت ورود است).');
+            return;
+        }
 
-        if (!entry || (entry && outcome !== entry.outcome)) {
-            if (finalExitPrice === undefined) {
-                 alert('برای این نوع خروج، قیمت خروج دستی الزامی است.');
-                 return;
+        const isOutcomeActive = formSettings.outcome?.isActive;
+        const { outcome, manualExitPrice } = formData;
+        let finalExitPrice: number | undefined;
+
+        if (isOutcomeActive) {
+            if(outcome === 'Take Profit') finalExitPrice = formData.takeProfit;
+            else if(outcome === 'Stop Loss') finalExitPrice = formData.stopLoss;
+            else if(outcome === 'Manual Exit') finalExitPrice = manualExitPrice;
+            
+            if (outcome === 'Manual Exit' && finalExitPrice === undefined) {
+                alert('برای خروج دستی، قیمت خروج الزامی است.');
+                return;
             }
         }
         
-        const finalPnl = finalExitPrice !== undefined 
-            ? (finalExitPrice - entryPrice!) * positionSize * (effectiveSide === 'Buy' ? 1 : -1) * 100000
-            : entry!.profitOrLoss;
+        let finalPnl: number | undefined;
+        let status: JournalEntry['status'] | undefined;
 
-        const status: 'Win' | 'Loss' | 'Breakeven' = finalPnl > 0 ? 'Win' : finalPnl < 0 ? 'Loss' : 'Breakeven';
-        const selectedSetup = setups.find(s => s.id === setupId);
+        if (finalExitPrice !== undefined && formData.entryPrice !== undefined && effectiveSide) {
+            const positionSize = formData.positionSize || 1;
+            finalPnl = (finalExitPrice - formData.entryPrice) * positionSize * (effectiveSide === 'Buy' ? 1 : -1) * 100000;
+            status = finalPnl > 0 ? 'Win' : finalPnl < 0 ? 'Loss' : 'Breakeven';
+        }
 
         const newEntry: JournalEntry = {
-            ...initialEmptyState,
             ...formData,
             id: entry?.id || new Date().toISOString(), 
             date: entry?.date || new Date().toISOString(),
-            symbol: formData.symbol || '',
-            side: effectiveSide,
-            entryPrice: entryPrice!,
-            exitPrice: finalExitPrice ?? entry!.exitPrice, 
-            stopLoss: stopLoss!,
-            takeProfit: takeProfit!,
-            positionSize,
+            side: effectiveSide || undefined,
+            exitPrice: finalExitPrice,
             profitOrLoss: finalPnl,
-            status,
-            riskRewardRatio: parseFloat(calculations.rr),
-            outcome: outcome!,
-            setupName: selectedSetup?.name,
+            status: status,
+            riskRewardRatio: calculations.rr !== 'N/A' && calculations.rr !== '∞' ? parseFloat(calculations.rr) : undefined,
+            setupName: setups.find(s => s.id === formData.setupId)?.name,
         };
         
         try {
             await addJournalEntry(newEntry);
-             if (!entry) { // Clear draft only on new entry submission
-                try {
-                    localStorage.removeItem(DRAFT_KEY);
-                } catch(e) { console.error(e) }
+            if (!entry) {
+                try { localStorage.removeItem(DRAFT_KEY); } catch(e) { console.error(e) }
             }
             onSave();
             onClose();
@@ -565,6 +530,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         }
     };
     
+    const isSubmitDisabled = formSettings.entryPrice?.isActive && formData.entryPrice != null && (!effectiveSide || !calculations.isValid);
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -574,7 +541,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 </div>
                 
                 <form onSubmit={handleSubmit} className="flex-grow flex flex-col overflow-hidden">
-                    {/* Summary Bar */}
                     <div className="flex items-center justify-around p-3 bg-gray-50 dark:bg-gray-700/50 border-b dark:border-gray-700 text-sm">
                         <div className="flex items-center gap-2">
                              <button type="button" onClick={() => setManualSide(effectiveSide === 'Buy' ? 'Sell' : 'Buy')} className={`flex items-center gap-1 font-bold p-1 rounded-md ${effectiveSide === 'Buy' ? 'text-green-500' : effectiveSide === 'Sell' ? 'text-red-500' : 'text-gray-500'}`} title="تغییر جهت دستی">
@@ -586,7 +552,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                         <span><strong className="ml-1">R/R:</strong>{calculations.rr}</span>
                         <span><strong className="ml-1">ریسک:</strong>{calculations.riskPercent}</span>
                         <span className={effectiveSide === 'Buy' ? 'text-green-500' : 'text-red-500'}><strong className="ml-1 text-gray-800 dark:text-gray-200">PnL:</strong>{calculations.potentialPnl}</span>
-                        {!calculations.isValid && detectedSide && <span title="مقادیر نامعتبر"><AlertTriangle size={16} className="text-red-500" /></span>}
+                        {isSubmitDisabled && <span title="مقادیر نامعتبر"><AlertTriangle size={16} className="text-red-500" /></span>}
                     </div>
 
                     <div className="p-6 space-y-4 overflow-y-auto">
@@ -598,32 +564,32 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                             </div>
                         )}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                           {formSettings.symbol?.isActive && <input type="text" name="symbol" placeholder="نماد" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol} onChange={handleChange} autoFocus />}
-                           {formSettings.entryPrice?.isActive && <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>}
+                           {formSettings.symbol?.isActive && <input type="text" name="symbol" placeholder="نماد" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol || ''} onChange={handleChange} autoFocus />}
+                           {formSettings.entryPrice?.isActive && <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>}
                            {formSettings.stopLoss?.isActive && <div className="relative">
-                                <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
+                                <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
                                 {slSuggestion !== null && (
                                      <div className="absolute -bottom-6 left-0 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                         <Wand2 size={12} className="text-indigo-400"/>
-                                        <span>میانگین SL شما: {slSuggestion.toFixed(1)} پیپ.</span>
+                                        <span>میانگین SL: {slSuggestion.toFixed(1)} پیپ.</span>
                                         <button type="button" onClick={applySlSuggestion} className="text-indigo-500 hover:underline">اعمال</button>
                                     </div>
                                 )}
                             </div>}
-                           {formSettings.takeProfit?.isActive && <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>}
+                           {formSettings.takeProfit?.isActive && <input type="number" name="takeProfit" step="any" placeholder="حد سود" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>}
                            {formSettings.positionSize?.isActive && <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>}
                         </div>
 
                         {formSettings.outcome?.isActive && <fieldset className="border p-4 rounded-md dark:border-gray-600">
-                            <legend className="px-2 font-semibold text-sm">نتیجه معامله</legend>
+                            <legend className="px-2 font-semibold text-sm">ثبت نتیجه معامله</legend>
                             <div className="grid grid-cols-2 gap-4">
-                                 <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome} onChange={handleChange}>
+                                 <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome || ''} onChange={handleChange}>
                                     <option value="Manual Exit">خروج دستی</option>
                                     <option value="Take Profit">حد سود</option>
                                     <option value="Stop Loss">حد ضرر</option>
                                 </select>
                                 {formData.outcome === 'Manual Exit' && (
-                                    <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
+                                    <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
                                 )}
                             </div>
                         </fieldset>}
@@ -691,7 +657,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                     
                     <div className="flex justify-end gap-3 p-4 mt-auto border-t dark:border-gray-700 bg-white/5 dark:bg-gray-800/5">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">انصراف</button>
-                        <button type="submit" className="flex items-center gap-2 px-4 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-gray-400" disabled={!effectiveSide || !calculations.isValid}>
+                        <button type="submit" className="flex items-center gap-2 px-4 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-gray-400" disabled={isSubmitDisabled}>
                            <Check size={18}/> {entry ? 'ذخیره تغییرات' : 'ذخیره معامله'}
                         </button>
                     </div>

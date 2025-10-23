@@ -43,12 +43,13 @@ const TradesTableWidget: React.FC = () => {
   const formatNumber = (value: any, digits: number, prefix = ''): string => {
     const num = Number(value);
     if (value === null || value === undefined || isNaN(num)) {
-        return 'N/A';
+        return '-';
     }
     return `${prefix}${num.toFixed(digits)}`;
   };
   
   const showTradeOnChart = (trade: JournalEntry) => {
+    if(!trade.entryPrice) return;
     const event = new CustomEvent('showTradeOnChart', { detail: trade });
     window.dispatchEvent(event);
     window.location.hash = '/';
@@ -83,20 +84,22 @@ const TradesTableWidget: React.FC = () => {
             <tbody>
               {trades.length > 0 ? trades.map(trade => (
                 <tr key={trade.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                  <td className="px-4 py-2 font-medium">{trade.symbol}</td>
+                  <td className="px-4 py-2 font-medium">{trade.symbol || '-'}</td>
                   <td className={`px-4 py-2 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
-                      {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
-                      {trade.side === 'Buy' ? 'خرید' : 'فروش'}
+                      {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : trade.side === 'Sell' ? <ArrowDownCircle size={14} /> : null}
+                      {trade.side === 'Buy' ? 'خرید' : trade.side === 'Sell' ? 'فروش' : '-'}
                   </td>
                   <td className="px-4 py-2 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
                   <td className="px-4 py-2 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
-                  <td className={`px-4 py-2 font-bold font-mono ${Number(trade.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {formatNumber(trade.profitOrLoss, 2, '$')}
+                  <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {trade.profitOrLoss != null ? formatNumber(trade.profitOrLoss, 2, '$') : <span className="text-xs text-blue-500">باز</span>}
                   </td>
                   <td className="px-4 py-2">
-                    <button onClick={() => showTradeOnChart(trade)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
-                        <LineChart size={16} />
-                    </button>
+                    {trade.entryPrice && (
+                        <button onClick={() => showTradeOnChart(trade)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
+                            <LineChart size={16} />
+                        </button>
+                    )}
                   </td>
                 </tr>
               )) : (

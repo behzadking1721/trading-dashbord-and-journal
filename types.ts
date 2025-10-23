@@ -24,24 +24,24 @@ export type EntryReason = 'ستاپ تکنیکال' | 'خبر' | 'دنبال ک�
 export interface JournalEntry {
     id: string;
     date: string;
-    symbol: string;
-    side: 'Buy' | 'Sell';
-    entryPrice: number;
-    exitPrice: number;
-    stopLoss: number;
-    takeProfit: number;
-    outcome: TradeOutcome;
-    positionSize: number;
-    riskRewardRatio: number;
-    profitOrLoss: number;
-    status: 'Win' | 'Loss' | 'Breakeven';
-    setupId?: string; // Link to the TradingSetup
-    setupName?: string; // Denormalized for easy display
+    symbol?: string;
+    side?: 'Buy' | 'Sell';
+    entryPrice?: number;
+    exitPrice?: number;
+    stopLoss?: number;
+    takeProfit?: number;
+    outcome?: TradeOutcome;
+    positionSize?: number;
+    riskRewardRatio?: number;
+    profitOrLoss?: number;
+    status?: 'Win' | 'Loss' | 'Breakeven';
+    setupId?: string;
+    setupName?: string;
     tags?: string[];
     mistakes?: string[];
     notesBefore?: string;
     notesAfter?: string;
-    imageUrl?: string; // For chart screenshots
+    imageUrl?: string;
     psychology?: {
         emotionBefore?: EmotionBefore;
         entryReason?: EntryReason;
@@ -112,6 +112,7 @@ export type Alert = PriceAlert | NewsAlert;
 export interface NotificationSettings {
     globalEnable: boolean;
     priceAlerts: boolean;
+
     newsAlerts: boolean;
 }
 

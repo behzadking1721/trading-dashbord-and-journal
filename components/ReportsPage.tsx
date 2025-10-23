@@ -62,16 +62,14 @@ const StatTable: React.FC<{ data: PerformanceByGroup }> = ({ data }) => (
             </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {Object.entries(data).map(([key, value]) => {
-                // FIX: Add type assertion to resolve 'unknown' type from Object.entries
-                const typedValue = value as { totalTrades: number, winRate: number, totalPnl: number };
+            {Object.entries(data).sort(([,a], [,b]) => b.totalPnl - a.totalPnl).map(([key, value]) => {
                 return (
                 <tr key={key}>
                     <td className="py-2 px-1 font-semibold">{key}</td>
-                    <td className="py-2 px-1 text-center">{typedValue.totalTrades}</td>
-                    <td className="py-2 px-1 text-center">{typedValue.winRate.toFixed(1)}%</td>
-                    <td className={`py-2 px-1 text-center font-mono font-bold ${typedValue.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        ${typedValue.totalPnl.toFixed(2)}
+                    <td className="py-2 px-1 text-center">{value.totalTrades}</td>
+                    <td className="py-2 px-1 text-center">{value.winRate.toFixed(1)}%</td>
+                    <td className={`py-2 px-1 text-center font-mono font-bold ${value.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        ${value.totalPnl.toFixed(2)}
                     </td>
                 </tr>
             )})}
@@ -80,23 +78,22 @@ const StatTable: React.FC<{ data: PerformanceByGroup }> = ({ data }) => (
 );
 
 const BarChart: React.FC<{ data: { [key: string]: number }, valuePrefix?: string }> = ({ data, valuePrefix = '' }) => {
-    // FIX: Add type assertion to resolve 'unknown' type from Object.values
-    const maxValue = Math.max(...(Object.values(data) as number[]).map(v => Math.abs(v)), 1);
+    const sortedData = Object.entries(data).sort(([,a], [,b]) => b-a);
+    const maxValue = Math.max(...Object.values(data).map(v => Math.abs(v)), 1);
+    
     return (
         <div className="space-y-2 text-sm">
-            {Object.entries(data).map(([key, value]) => {
-                // FIX: Add type assertion to resolve 'unknown' type from Object.entries
-                const numericValue = value as number;
+            {sortedData.map(([key, value]) => {
                 return (
                 <div key={key} className="flex items-center gap-2">
                     <span className="w-24 truncate text-gray-500 dark:text-gray-400">{key}</span>
                     <div className="flex-grow bg-gray-200 dark:bg-gray-700 rounded-full h-5 relative">
                         <div
-                            className={`h-5 rounded-full ${numericValue >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
-                            style={{ width: `${(Math.abs(numericValue) / maxValue) * 100}%` }}
+                            className={`h-5 rounded-full ${value >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${(Math.abs(value) / maxValue) * 100}%` }}
                         />
                          <span className="absolute inset-0 px-2 flex items-center text-xs font-bold text-white mix-blend-difference">
-                            {valuePrefix}{numericValue.toFixed(valuePrefix === '$' ? 2 : 0)}
+                            {valuePrefix}{value.toFixed(valuePrefix === '$' ? 2 : 0)}
                          </span>
                     </div>
                 </div>
@@ -105,7 +102,6 @@ const BarChart: React.FC<{ data: { [key: string]: number }, valuePrefix?: string
     );
 }
 
-// Helper to safely access nested properties
 const getNested = (obj: any, path: string): any => {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 };
@@ -124,7 +120,6 @@ const ReportsPage: React.FC = () => {
             } catch (error) {
                 console.error("Failed to load entries for reports:", error);
             } finally {
-                // Add a small delay to better show skeleton
                 setTimeout(() => setLoading(false), 300);
             }
         };
@@ -133,23 +128,25 @@ const ReportsPage: React.FC = () => {
         return () => window.removeEventListener('journalUpdated', loadData);
     }, []);
 
-    const filteredEntries = useMemo(() => {
-        if (timeFilter === 'all') return allEntries;
+    const closedEntries = useMemo(() => {
+        const baseEntries = allEntries.filter(e => e.profitOrLoss != null);
+        if (timeFilter === 'all') return baseEntries;
+        
         const now = new Date();
         const daysToSubtract = { '7d': 7, '30d': 30, '90d': 90 }[timeFilter];
         const filterDate = new Date(new Date().setDate(now.getDate() - daysToSubtract));
-        return allEntries.filter(entry => new Date(entry.date) >= filterDate);
+        return baseEntries.filter(entry => new Date(entry.date) >= filterDate);
     }, [allEntries, timeFilter]);
     
     const calculatePerformanceByGroup = (key: keyof JournalEntry | string): PerformanceByGroup => {
-        const groups = filteredEntries.reduce((acc, entry) => {
+        const groups = closedEntries.reduce((acc, entry) => {
             const groupKey = getNested(entry, key.toString()) || 'نامشخص';
             if (!acc[groupKey]) {
                 acc[groupKey] = { totalTrades: 0, wins: 0, totalPnl: 0 };
             }
             acc[groupKey].totalTrades++;
-            acc[groupKey].totalPnl += entry.profitOrLoss;
-            if (entry.profitOrLoss > 0) {
+            acc[groupKey].totalPnl += entry.profitOrLoss!;
+            if (entry.profitOrLoss! > 0) {
                 acc[groupKey].wins++;
             }
             return acc;
@@ -168,16 +165,16 @@ const ReportsPage: React.FC = () => {
     };
 
     const summaryStats = useMemo(() => {
-        if (filteredEntries.length === 0) return null;
+        if (closedEntries.length === 0) return null;
 
-        const winningTrades = filteredEntries.filter(e => e.profitOrLoss > 0);
-        const losingTrades = filteredEntries.filter(e => e.profitOrLoss < 0);
+        const winningTrades = closedEntries.filter(e => e.profitOrLoss! > 0);
+        const losingTrades = closedEntries.filter(e => e.profitOrLoss! < 0);
 
-        const bestTrade = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.profitOrLoss)) : 0;
-        const worstTrade = losingTrades.length > 0 ? Math.min(...losingTrades.map(t => t.profitOrLoss)) : 0;
+        const bestTrade = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.profitOrLoss!)) : 0;
+        const worstTrade = losingTrades.length > 0 ? Math.min(...losingTrades.map(t => t.profitOrLoss!)) : 0;
 
-        const totalWinPnl = winningTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
-        const totalLossPnl = losingTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
+        const totalWinPnl = winningTrades.reduce((sum, t) => sum + t.profitOrLoss!, 0);
+        const totalLossPnl = losingTrades.reduce((sum, t) => sum + t.profitOrLoss!, 0);
 
         const avgWin = winningTrades.length > 0 ? totalWinPnl / winningTrades.length : 0;
         const avgLoss = losingTrades.length > 0 ? totalLossPnl / losingTrades.length : 0;
@@ -186,24 +183,24 @@ const ReportsPage: React.FC = () => {
             bestTrade, worstTrade, avgWin, avgLoss,
             winningTradesCount: winningTrades.length,
             losingTradesCount: losingTrades.length,
-            longPositionsCount: filteredEntries.filter(t => t.side === 'Buy').length,
-            shortPositionsCount: filteredEntries.filter(t => t.side === 'Sell').length,
+            longPositionsCount: closedEntries.filter(t => t.side === 'Buy').length,
+            shortPositionsCount: closedEntries.filter(t => t.side === 'Sell').length,
         };
-    }, [filteredEntries]);
+    }, [closedEntries]);
 
-    const performanceBySetup = useMemo(() => calculatePerformanceByGroup('setupName'), [filteredEntries]);
-    const performanceBySymbol = useMemo(() => calculatePerformanceByGroup('symbol'), [filteredEntries]);
-    const performanceByEntryReason = useMemo(() => calculatePerformanceByGroup('psychology.entryReason'), [filteredEntries]);
+    const performanceBySetup = useMemo(() => calculatePerformanceByGroup('setupName'), [closedEntries]);
+    const performanceBySymbol = useMemo(() => calculatePerformanceByGroup('symbol'), [closedEntries]);
+    const performanceByEntryReason = useMemo(() => calculatePerformanceByGroup('psychology.entryReason'), [closedEntries]);
     
      const performanceByTag = useMemo(() => {
-        const groups = filteredEntries.reduce((acc, entry) => {
+        const groups = closedEntries.reduce((acc, entry) => {
             entry.tags?.forEach(tag => {
                 if (!acc[tag]) {
                     acc[tag] = { totalTrades: 0, wins: 0, totalPnl: 0 };
                 }
                 acc[tag].totalTrades++;
-                acc[tag].totalPnl += entry.profitOrLoss;
-                if (entry.profitOrLoss > 0) {
+                acc[tag].totalPnl += entry.profitOrLoss!;
+                if (entry.profitOrLoss! > 0) {
                     acc[tag].wins++;
                 }
             });
@@ -220,27 +217,27 @@ const ReportsPage: React.FC = () => {
             };
         }
         return result;
-    }, [filteredEntries]);
+    }, [closedEntries]);
 
     const performanceByDay = useMemo(() => {
         const days = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
         const data: { [key: string]: number } = {};
-        filteredEntries.forEach(entry => {
+        closedEntries.forEach(entry => {
             const dayName = days[new Date(entry.date).getDay()];
-            data[dayName] = (data[dayName] || 0) + entry.profitOrLoss;
+            data[dayName] = (data[dayName] || 0) + entry.profitOrLoss!;
         });
         return data;
-    }, [filteredEntries]);
+    }, [closedEntries]);
 
     const mistakeFrequency = useMemo(() => {
         const data: { [key: string]: number } = {};
-        filteredEntries.forEach(entry => {
+        closedEntries.forEach(entry => {
             entry.mistakes?.forEach(mistake => {
                 data[mistake] = (data[mistake] || 0) + 1;
             });
         });
         return data;
-    }, [filteredEntries]);
+    }, [closedEntries]);
 
     return (
         <div className="p-6 space-y-6">
@@ -261,7 +258,6 @@ const ReportsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Performance Summary Section */}
             <div className="space-y-4">
                 <h2 className="text-xl font-bold">خلاصه عملکرد</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -282,7 +278,7 @@ const ReportsPage: React.FC = () => {
                 </div>
             </div>
 
-            {filteredEntries.length === 0 && !loading ? (
+            {closedEntries.length === 0 && !loading ? (
                  <div className="text-center py-10 text-gray-500">
                     <p>داده‌ای برای نمایش در این بازه زمانی وجود ندارد.</p>
                 </div>

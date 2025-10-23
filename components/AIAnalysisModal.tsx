@@ -31,7 +31,6 @@ const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({ isOpen, onClose, entr
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
-            // We'll analyze the latest 30 trades to keep the prompt focused
             const tradesToAnalyze = entries.slice(0, 30);
 
             if(tradesToAnalyze.length < 3) {
@@ -40,18 +39,19 @@ const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({ isOpen, onClose, entr
                 return;
             }
 
-            // FIX: Replace `t.emotions` which does not exist with `t.psychology` fields.
             const formattedTrades = tradesToAnalyze.map(t => {
                 const emotions = [
                     t.psychology?.emotionBefore,
                     t.psychology?.emotionAfter
                 ].filter(Boolean).join(' -> ');
 
-                return `- نماد: ${t.symbol}, جهت: ${t.side}, سود/ضرر: ${t.profitOrLoss.toFixed(2)}$, وضعیت: ${t.status}, ستاپ: ${t.setupName || 'نامشخص'}, احساسات: ${emotions || 'ثبت نشده'}, اشتباهات: ${t.mistakes?.join(', ') || 'ثبت نشده'}`;
+                const pnl = t.profitOrLoss != null ? `${t.profitOrLoss.toFixed(2)}$` : 'باز';
+
+                return `- نماد: ${t.symbol || 'نامشخص'}, جهت: ${t.side || 'نامشخص'}, سود/ضرر: ${pnl}, وضعیت: ${t.status || 'نامشخص'}, ستاپ: ${t.setupName || 'نامشخص'}, احساسات: ${emotions || 'ثبت نشده'}, اشتباهات: ${t.mistakes?.join(', ') || 'ثبت نشده'}`;
             }).join('\n');
 
             const prompt = `
-                شما یک مربی حرفه‌ای معامله‌گری و روانشناس هستید. لیست معاملات اخیر از ژورنال یک کاربر در زیر آمده است. داده‌های هر معامله شامل: نماد، جهت (خرید/فروش)، سود/ضرر (PnL)، وضعیت (برد/باخت)، نام ستاپ، احساسات و اشتباهات ثبت‌شده است.
+                شما یک مربی حرفه‌ای معامله‌گری و روانشناس هستید. لیست معاملات اخیر از ژورنال یک کاربر در زیر آمده است. داده‌های هر معامله شامل: نماد، جهت (خرید/فروش)، سود/ضرر (PnL)، وضعیت (برد/باخت)، نام ستاپ، احساسات و اشتباهات ثبت‌شده است. معاملات با سود/ضرر "باز" هنوز بسته نشده‌اند.
 
                 بر اساس این داده‌ها، یک تحلیل کوتاه اما عمیق به زبان فارسی ارائه دهید. تحلیل شما باید شامل موارد زیر باشد:
                 ۱. شناسایی الگوهای مثبت تکرارشونده (مثال: «به نظر می‌رسد شما با ستاپ 'شکست' روی جفت‌ارز EURUSD بسیار موفق هستید.»).
