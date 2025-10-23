@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
 import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter } from '../types';
-import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags } from '../db';
+import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
 // FIX: Import the AlertTriangle icon from lucide-react.
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2 } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
+
+const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
 
 const JournalPage: React.FC = () => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -147,8 +149,6 @@ const JournalPage: React.FC = () => {
     );
 };
 
-const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
-
 const EMOTIONS_BEFORE: EmotionBefore[] = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
 const ENTRY_REASONS: EntryReason[] = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
 const EMOTIONS_AFTER: EmotionAfter[] = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
@@ -189,6 +189,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
 
     const [tagInput, setTagInput] = useState('');
     const [allTags, setAllTags] = useState<string[]>([]);
+    const [slSuggestion, setSlSuggestion] = useState<number | null>(null);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -272,6 +273,82 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         }
         return Array.from(suggestions).filter(t => !formData.tags?.includes(t));
     }, [formData.symbol, calculations.rr, formData.tags]);
+
+    // Auto-populate form based on selected setup
+    useEffect(() => {
+        if (!formData.setupId) return;
+
+        const selectedSetup = setups.find(s => s.id === formData.setupId);
+        if (!selectedSetup) return;
+
+        const updates: Partial<FormState> = {};
+        if (selectedSetup.defaultTags) {
+            updates.tags = Array.from(new Set([...(formData.tags || []), ...selectedSetup.defaultTags]));
+        }
+        if (selectedSetup.defaultMistakes) {
+            updates.mistakes = Array.from(new Set([...(formData.mistakes || []), ...selectedSetup.defaultMistakes]));
+        }
+        
+        setFormData(prev => ({ ...prev, ...updates }));
+
+        // Auto-calculate TP based on setup's R/R
+        if (selectedSetup.defaultRiskRewardRatio && formData.entryPrice && formData.stopLoss && effectiveSide) {
+            const riskDistance = Math.abs(formData.entryPrice - formData.stopLoss);
+            const rewardDistance = riskDistance * selectedSetup.defaultRiskRewardRatio;
+            const newTakeProfit = effectiveSide === 'Buy' 
+                ? formData.entryPrice + rewardDistance 
+                : formData.entryPrice - rewardDistance;
+            
+            setFormData(prev => ({ ...prev, takeProfit: newTakeProfit }));
+        }
+
+    }, [formData.setupId, effectiveSide]);
+
+    // Generate SL suggestion based on symbol history
+    useEffect(() => {
+        const getSuggestion = async () => {
+            if (!formData.symbol || formData.symbol.length < 4) {
+                setSlSuggestion(null);
+                return;
+            }
+            const symbolEntries = await getEntriesBySymbol(formData.symbol);
+            if (symbolEntries.length < 3) {
+                setSlSuggestion(null);
+                return;
+            }
+
+            const totalSlDistance = symbolEntries.reduce((sum, entry) => {
+                const distance = Math.abs(entry.entryPrice - entry.stopLoss);
+                return sum + distance;
+            }, 0);
+
+            const avgSlDistance = totalSlDistance / symbolEntries.length;
+            
+            // Heuristic to check if it's a forex pair to show pips
+            const isForex = ['usd', 'eur', 'gbp', 'jpy', 'chf', 'cad', 'aud', 'nzd'].some(c => formData.symbol!.toLowerCase().includes(c));
+            const pips = avgSlDistance * (formData.symbol!.toLowerCase().includes('jpy') ? 100 : 10000);
+
+            setSlSuggestion(isForex ? pips : avgSlDistance);
+        };
+
+        const debounce = setTimeout(getSuggestion, 300);
+        return () => clearTimeout(debounce);
+
+    }, [formData.symbol]);
+
+    const applySlSuggestion = () => {
+        if (!slSuggestion || !formData.entryPrice || !effectiveSide) return;
+
+        const isJpyPair = formData.symbol!.toLowerCase().includes('jpy');
+        const distance = slSuggestion / (isJpyPair ? 100 : 10000);
+
+        const newStopLoss = effectiveSide === 'Buy' 
+            ? formData.entryPrice - distance 
+            : formData.entryPrice + distance;
+        
+        setFormData(prev => ({ ...prev, stopLoss: newStopLoss }));
+    };
+
 
     const togglePsychoAnalysis = () => setIsPsychoAnalysisOpen(p => !p);
 
@@ -413,7 +490,16 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             <input type="text" name="symbol" placeholder="نماد" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol} onChange={handleChange} autoFocus />
                             <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>
-                            <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
+                            <div className="relative">
+                                <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
+                                {slSuggestion !== null && (
+                                     <div className="absolute -bottom-6 left-0 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                        <Wand2 size={12} className="text-indigo-400"/>
+                                        <span>میانگین SL شما: {slSuggestion.toFixed(1)} پیپ.</span>
+                                        <button type="button" onClick={applySlSuggestion} className="text-indigo-500 hover:underline">اعمال</button>
+                                    </div>
+                                )}
+                            </div>
                             <input type="number" name="takeProfit" step="any" placeholder="حد سود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>
                             <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
                         </div>

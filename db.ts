@@ -12,7 +12,7 @@ interface TradingDB extends DBSchema {
   [JOURNAL_STORE]: {
     key: string;
     value: JournalEntry;
-    indexes: { 'date': string };
+    indexes: { 'date': string, 'symbol': string };
   };
   [ALERTS_STORE]: {
     key: string;
@@ -28,6 +28,7 @@ const getDb = () => {
         if (!db.objectStoreNames.contains(JOURNAL_STORE)) {
           const store = db.createObjectStore(JOURNAL_STORE, { keyPath: 'id' });
           store.createIndex('date', 'date');
+          store.createIndex('symbol', 'symbol');
         }
       }
       if (oldVersion < 2) {
@@ -82,6 +83,20 @@ export const getJournalEntries = async (): Promise<JournalEntry[]> => {
     console.error("Failed to get journal entries:", error);
     return []; // Return empty array on error to prevent crashes
   }
+};
+
+export const getEntriesBySymbol = async (symbol: string): Promise<JournalEntry[]> => {
+    if (!symbol) return [];
+    try {
+        const db = await getDb();
+        const entries = await db.getAll(JOURNAL_STORE);
+        return entries
+            .filter(e => e.symbol.toLowerCase() === symbol.toLowerCase())
+            .map(coerceEntry);
+    } catch (error) {
+        console.error(`Failed to get entries for symbol ${symbol}:`, error);
+        return [];
+    }
 };
 
 export const getAllTags = async (): Promise<string[]> => {

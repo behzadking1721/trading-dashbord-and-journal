@@ -71,6 +71,10 @@ export interface TradingSetup {
     category: string;
     checklist: TradingChecklistItem[];
     isActive: boolean;
+    // New fields for smart-entry presets
+    defaultRiskRewardRatio?: number;
+    defaultTags?: string[];
+    defaultMistakes?: string[];
 }
 
 export type WidgetVisibility = { [key: string]: boolean };
