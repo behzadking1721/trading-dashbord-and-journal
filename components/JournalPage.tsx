@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRe
 import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
 // FIX: Import the AlertTriangle icon from lucide-react.
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2 } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 
@@ -158,24 +158,51 @@ interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
     manualExitPrice?: number;
 }
 
+const DRAFT_KEY = 'journal_form_draft';
+
+const initialEmptyState: FormState = {
+    symbol: '',
+    entryPrice: undefined,
+    stopLoss: undefined,
+    takeProfit: undefined,
+    positionSize: undefined,
+    setupId: '',
+    tags: [],
+    psychology: {},
+    mistakes: [],
+    notesBefore: '',
+    notesAfter: '',
+    outcome: 'Manual Exit',
+    manualExitPrice: undefined,
+    imageUrl: undefined,
+};
+
 
 const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entry: JournalEntry | null; }> = ({ onClose, onSave, entry }) => {
-    const [formData, setFormData] = useState<FormState>({
-        symbol: entry?.symbol || '', 
-        entryPrice: entry?.entryPrice, 
-        stopLoss: entry?.stopLoss, 
-        takeProfit: entry?.takeProfit,
-        positionSize: entry?.positionSize,
-        setupId: entry?.setupId || '', 
-        tags: entry?.tags || [], 
-        psychology: entry?.psychology || {},
-        mistakes: entry?.mistakes || [], 
-        notesBefore: entry?.notesBefore || '', 
-        notesAfter: entry?.notesAfter || '', 
-        outcome: entry?.outcome || 'Manual Exit', 
-        manualExitPrice: entry?.outcome === 'Manual Exit' ? entry?.exitPrice : undefined,
-        imageUrl: entry?.imageUrl,
-    });
+    const getInitialState = (): FormState => {
+        if (entry) {
+            return {
+                symbol: entry.symbol || '', 
+                entryPrice: entry.entryPrice, 
+                stopLoss: entry.stopLoss, 
+                takeProfit: entry.takeProfit,
+                positionSize: entry.positionSize,
+                setupId: entry.setupId || '', 
+                tags: entry.tags || [], 
+                psychology: entry.psychology || {},
+                mistakes: entry.mistakes || [], 
+                notesBefore: entry.notesBefore || '', 
+                notesAfter: entry.notesAfter || '', 
+                outcome: entry.outcome || 'Manual Exit', 
+                manualExitPrice: entry.outcome === 'Manual Exit' ? entry.exitPrice : undefined,
+                imageUrl: entry.imageUrl,
+            };
+        }
+        return initialEmptyState;
+    };
+    
+    const [formData, setFormData] = useState<FormState>(getInitialState());
+    const [draftLoaded, setDraftLoaded] = useState(false);
     
     const [manualSide, setManualSide] = useState<'Buy' | 'Sell' | null>(entry?.side || null);
     const [setups, setSetups] = useState<TradingSetup[]>([]);
@@ -194,6 +221,15 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     useEffect(() => {
         const loadInitialData = async () => {
              try {
+                // Load draft for new entries only
+                if (!entry) {
+                    const savedDraft = localStorage.getItem(DRAFT_KEY);
+                    if (savedDraft) {
+                        setFormData(JSON.parse(savedDraft));
+                        setDraftLoaded(true);
+                    }
+                }
+
                 const savedSetups = localStorage.getItem('trading-setups');
                 if (savedSetups) setSetups(JSON.parse(savedSetups));
                 const savedRiskSettings = localStorage.getItem('risk-management-settings');
@@ -217,6 +253,29 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    // Autosave draft for new entries
+    useEffect(() => {
+        if (!entry) {
+             try {
+                const isFormEmpty = Object.keys(formData).every(key => {
+                    const value = formData[key as keyof FormState];
+                    // Compare against initial empty state to see if it's "empty"
+                    const initialValue = initialEmptyState[key as keyof FormState];
+                    return JSON.stringify(value) === JSON.stringify(initialValue);
+                });
+
+                if (!isFormEmpty) {
+                    localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+                } else {
+                    localStorage.removeItem(DRAFT_KEY); // Clean up if form becomes empty
+                }
+            } catch (e) {
+                console.warn("Could not save draft to localStorage.", e);
+            }
+        }
+    }, [formData, entry]);
+
 
     const detectedSide = useMemo<'Buy' | 'Sell' | null>(() => {
         const { entryPrice, stopLoss, takeProfit } = formData;
@@ -404,6 +463,16 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         }
     };
     
+    const handleDiscardDraft = () => {
+        if (window.confirm('آیا از حذف پیش‌نویس مطمئن هستید؟ اطلاعات وارد شده پاک خواهد شد.')) {
+            try {
+                localStorage.removeItem(DRAFT_KEY);
+            } catch(e) { console.error(e) }
+            setFormData(initialEmptyState);
+            setDraftLoaded(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent | KeyboardEvent) => {
         e.preventDefault();
         
@@ -453,6 +522,11 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         
         try {
             await addJournalEntry(newEntry);
+             if (!entry) { // Clear draft only on new entry submission
+                try {
+                    localStorage.removeItem(DRAFT_KEY);
+                } catch(e) { console.error(e) }
+            }
             onSave();
             onClose();
         } catch (e) {
@@ -487,6 +561,13 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                     </div>
 
                     <div className="p-6 space-y-4 overflow-y-auto">
+                         {draftLoaded && (
+                            <div className="flex items-center justify-center gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300 text-xs rounded-md">
+                                <Info size={14} />
+                                <span>پیش‌نویس قبلی شما بارگذاری شد.</span>
+                                <button type="button" onClick={handleDiscardDraft} className="font-semibold hover:underline">حذف</button>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             <input type="text" name="symbol" placeholder="نماد" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol} onChange={handleChange} autoFocus />
                             <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" required className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${!calculations.isValid && detectedSide ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>
