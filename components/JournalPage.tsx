@@ -585,22 +585,19 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                             <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>
                         </div>
 
-                         {/* Outcome for existing trades */}
-                        {entry && (
-                            <fieldset className="border p-4 rounded-md dark:border-gray-600">
-                                <legend className="px-2 font-semibold text-sm">نتیجه معامله</legend>
-                                <div className="grid grid-cols-2 gap-4">
-                                     <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome} onChange={handleChange}>
-                                        <option value="Manual Exit">خروج دستی</option>
-                                        <option value="Take Profit">حد سود</option>
-                                        <option value="Stop Loss">حد ضرر</option>
-                                    </select>
-                                    {formData.outcome === 'Manual Exit' && (
-                                        <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
-                                    )}
-                                </div>
-                            </fieldset>
-                        )}
+                        <fieldset className="border p-4 rounded-md dark:border-gray-600">
+                            <legend className="px-2 font-semibold text-sm">نتیجه معامله</legend>
+                            <div className="grid grid-cols-2 gap-4">
+                                 <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome} onChange={handleChange}>
+                                    <option value="Manual Exit">خروج دستی</option>
+                                    <option value="Take Profit">حد سود</option>
+                                    <option value="Stop Loss">حد ضرر</option>
+                                </select>
+                                {formData.outcome === 'Manual Exit' && (
+                                    <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" required className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
+                                )}
+                            </div>
+                        </fieldset>
                         
                         {/* Image Upload */}
                         <div className="border border-dashed dark:border-gray-600 rounded-lg p-4 text-center">

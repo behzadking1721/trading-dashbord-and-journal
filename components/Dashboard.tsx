@@ -1,15 +1,51 @@
-import React, { Suspense, useState, lazy } from 'react';
+import React, { Suspense, useState, lazy, useEffect } from 'react';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
 import { RefreshCw, Clock, Bell } from 'lucide-react';
+import type { WidgetVisibility } from '../types';
 
 const AlertsManager = lazy(() => import('./AlertsManager'));
+const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 
 const Dashboard: React.FC = () => {
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
+    const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
+
+    useEffect(() => {
+        const loadVisibility = () => {
+            try {
+                const savedVisibility = localStorage.getItem(STORAGE_KEY_WIDGET_VISIBILITY);
+                const initialVisibility: WidgetVisibility = savedVisibility ? JSON.parse(savedVisibility) : {};
+                // Ensure all widgets have a default value of true if not set
+                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
+                    if (initialVisibility[key] === undefined) {
+                        initialVisibility[key] = true;
+                    }
+                });
+                setWidgetVisibility(initialVisibility);
+            } catch (error) {
+                console.error("Failed to load widget visibility", error);
+                // Fallback to all visible
+                const allVisible: WidgetVisibility = {};
+                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
+                    allVisible[key] = true;
+                });
+                setWidgetVisibility(allVisible);
+            }
+        };
+
+        loadVisibility();
+        window.addEventListener('storage', loadVisibility);
+        return () => window.removeEventListener('storage', loadVisibility);
+    }, []);
+
 
     // This is a helper function to avoid repeating the Suspense and Card logic
     const renderWidget = (widgetKey: keyof typeof WIDGETS, customContainerClass: string = "") => {
+        if (!widgetVisibility[widgetKey]) {
+            return null;
+        }
+        
         const WidgetComponent = WIDGETS[widgetKey];
         const def = WIDGET_DEFINITIONS[widgetKey];
         if (!WidgetComponent || !def) return null;
