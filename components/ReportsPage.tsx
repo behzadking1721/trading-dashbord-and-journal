@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
-import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle } from 'lucide-react';
+import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Tag } from 'lucide-react';
 
 type PerformanceByGroup = {
     [key: string]: {
@@ -105,6 +105,11 @@ const BarChart: React.FC<{ data: { [key: string]: number }, valuePrefix?: string
     );
 }
 
+// Helper to safely access nested properties
+const getNested = (obj: any, path: string): any => {
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+};
+
 const ReportsPage: React.FC = () => {
     const [allEntries, setAllEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -136,14 +141,9 @@ const ReportsPage: React.FC = () => {
         return allEntries.filter(entry => new Date(entry.date) >= filterDate);
     }, [allEntries, timeFilter]);
     
-    // FIX: Refactored function to be type-safe. The original implementation had a type error
-    // when initializing the accumulator because it used a temporary `wins` property that was not
-    // defined in the type. This new version first aggregates data into an intermediate object with the
-    // correct type (including `wins`), then calculates the final `winRate` and maps the result
-    // to the expected `PerformanceByGroup` type.
-    const calculatePerformanceByGroup = (key: 'setupName' | 'symbol'): PerformanceByGroup => {
+    const calculatePerformanceByGroup = (key: keyof JournalEntry | string): PerformanceByGroup => {
         const groups = filteredEntries.reduce((acc, entry) => {
-            const groupKey = entry[key] || 'نامشخص';
+            const groupKey = getNested(entry, key.toString()) || 'نامشخص';
             if (!acc[groupKey]) {
                 acc[groupKey] = { totalTrades: 0, wins: 0, totalPnl: 0 };
             }
@@ -193,7 +193,35 @@ const ReportsPage: React.FC = () => {
 
     const performanceBySetup = useMemo(() => calculatePerformanceByGroup('setupName'), [filteredEntries]);
     const performanceBySymbol = useMemo(() => calculatePerformanceByGroup('symbol'), [filteredEntries]);
+    const performanceByEntryReason = useMemo(() => calculatePerformanceByGroup('psychology.entryReason'), [filteredEntries]);
     
+     const performanceByTag = useMemo(() => {
+        const groups = filteredEntries.reduce((acc, entry) => {
+            entry.tags?.forEach(tag => {
+                if (!acc[tag]) {
+                    acc[tag] = { totalTrades: 0, wins: 0, totalPnl: 0 };
+                }
+                acc[tag].totalTrades++;
+                acc[tag].totalPnl += entry.profitOrLoss;
+                if (entry.profitOrLoss > 0) {
+                    acc[tag].wins++;
+                }
+            });
+            return acc;
+        }, {} as { [key: string]: { totalTrades: number; wins: number; totalPnl: number; } });
+
+        const result: PerformanceByGroup = {};
+        for (const key in groups) {
+            const group = groups[key];
+            result[key] = {
+                totalTrades: group.totalTrades,
+                totalPnl: group.totalPnl,
+                winRate: group.totalTrades > 0 ? (group.wins / group.totalTrades) * 100 : 0
+            };
+        }
+        return result;
+    }, [filteredEntries]);
+
     const performanceByDay = useMemo(() => {
         const days = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
         const data: { [key: string]: number } = {};
@@ -204,16 +232,6 @@ const ReportsPage: React.FC = () => {
         return data;
     }, [filteredEntries]);
 
-    const performanceByEmotion = useMemo(() => {
-        const data: { [key: string]: number } = {};
-        filteredEntries.forEach(entry => {
-            entry.emotions?.forEach(emotion => {
-                data[emotion] = (data[emotion] || 0) + entry.profitOrLoss;
-            });
-        });
-        return data;
-    }, [filteredEntries]);
-    
     const mistakeFrequency = useMemo(() => {
         const data: { [key: string]: number } = {};
         filteredEntries.forEach(entry => {
@@ -273,19 +291,18 @@ const ReportsPage: React.FC = () => {
                     <AnalysisCard title="عملکرد بر اساس ستاپ" icon={Target} isLoading={loading}>
                         <StatTable data={performanceBySetup} />
                     </AnalysisCard>
-
                      <AnalysisCard title="عملکرد بر اساس نماد" icon={Briefcase} isLoading={loading}>
                         <StatTable data={performanceBySymbol} />
                     </AnalysisCard>
-                    
+                     <AnalysisCard title="عملکرد بر اساس تگ" icon={Tag} isLoading={loading}>
+                        <StatTable data={performanceByTag} />
+                    </AnalysisCard>
+                     <AnalysisCard title="عملکرد بر اساس انگیزه ورود" icon={Brain} isLoading={loading}>
+                        <StatTable data={performanceByEntryReason} />
+                    </AnalysisCard>
                      <AnalysisCard title="عملکرد بر اساس روز هفته" icon={CalendarIcon} isLoading={loading}>
                         <BarChart data={performanceByDay} valuePrefix="$" />
                     </AnalysisCard>
-
-                     <AnalysisCard title="تحلیل روانشناسی: احساسات" icon={Brain} isLoading={loading}>
-                         <BarChart data={performanceByEmotion} valuePrefix="$" />
-                    </AnalysisCard>
-                    
                     <AnalysisCard title="تحلیل روانشناسی: اشتباهات" icon={AlertTriangle} isLoading={loading}>
                         <BarChart data={mistakeFrequency} />
                     </AnalysisCard>

@@ -16,6 +16,11 @@ export interface EconomicEvent {
 
 export type TradeOutcome = 'Take Profit' | 'Stop Loss' | 'Manual Exit';
 
+export type EmotionBefore = 'مطمئن' | 'مضطرب' | 'هیجانی' | 'منظم';
+export type EmotionAfter = 'رضایت' | 'پشیمانی' | 'شک' | 'هیجان‌زده';
+export type EntryReason = 'ستاپ تکنیکال' | 'خبر' | 'دنبال کردن ترند' | 'ترس از دست دادن (FOMO)' | 'انتقام';
+
+
 export interface JournalEntry {
     id: string;
     date: string;
@@ -32,11 +37,16 @@ export interface JournalEntry {
     status: 'Win' | 'Loss' | 'Breakeven';
     setupId?: string; // Link to the TradingSetup
     setupName?: string; // Denormalized for easy display
-    emotions?: string[];
+    tags?: string[];
     mistakes?: string[];
     notesBefore?: string;
     notesAfter?: string;
     imageUrl?: string; // For chart screenshots
+    psychology?: {
+        emotionBefore?: EmotionBefore;
+        entryReason?: EntryReason;
+        emotionAfter?: EmotionAfter;
+    };
 }
 
 export interface OHLCData {

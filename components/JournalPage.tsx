@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
-import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings } from '../types';
-import { addJournalEntry, getJournalEntries, deleteJournalEntry } from '../db';
+import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter } from '../types';
+import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags } from '../db';
 // FIX: Import the AlertTriangle icon from lucide-react.
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 
@@ -76,6 +76,7 @@ const JournalPage: React.FC = () => {
                             <th className="px-4 py-3">نماد</th>
                             <th className="px-4 py-3">جهت</th>
                             <th className="px-4 py-3">ستاپ معاملاتی</th>
+                            <th className="px-4 py-3">تگ‌ها</th>
                             <th className="px-4 py-3">سود/ضرر</th>
                             <th className="px-4 py-3">عملیات</th>
                         </tr>
@@ -90,6 +91,13 @@ const JournalPage: React.FC = () => {
                                     {entry.side === 'Buy' ? 'خرید' : 'فروش'}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-wrap gap-1 max-w-xs">
+                                        {entry.tags?.map(tag => (
+                                            <span key={tag} className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded-full">{tag}</span>
+                                        ))}
+                                    </div>
+                                </td>
                                 <td className={`px-4 py-3 font-mono font-bold ${Number(entry.profitOrLoss) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     ${typeof entry.profitOrLoss === 'number' && !isNaN(entry.profitOrLoss) ? entry.profitOrLoss.toFixed(2) : '0.00'}
                                 </td>
@@ -112,7 +120,7 @@ const JournalPage: React.FC = () => {
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={6} className="text-center py-10 text-gray-500">
+                                <td colSpan={7} className="text-center py-10 text-gray-500">
                                     هیچ معامله‌ای ثبت نشده است.
                                 </td>
                             </tr>
@@ -140,12 +148,10 @@ const JournalPage: React.FC = () => {
 };
 
 const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
-const singleEmotionMap: { emoji: string; value: string; color: string; selectedClasses: string }[] = [
-    { emoji: '😊', value: 'مطمئن', color: 'green-500', selectedClasses: 'border-green-500 text-green-500 bg-green-500/10' },
-    { emoji: '😐', value: 'منظم', color: 'blue-500', selectedClasses: 'border-blue-500 text-blue-500 bg-blue-500/10' },
-    { emoji: '😡', value: 'عصبی', color: 'red-500', selectedClasses: 'border-red-500 text-red-500 bg-red-500/10' },
-    { emoji: '😰', value: 'مضطرب', color: 'orange-500', selectedClasses: 'border-orange-500 text-orange-500 bg-orange-500/10' },
-];
+
+const EMOTIONS_BEFORE: EmotionBefore[] = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
+const ENTRY_REASONS: EntryReason[] = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
+const EMOTIONS_AFTER: EmotionAfter[] = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
 
 interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
     outcome?: TradeOutcome;
@@ -161,7 +167,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         takeProfit: entry?.takeProfit,
         positionSize: entry?.positionSize,
         setupId: entry?.setupId || '', 
-        emotions: entry?.emotions || [], 
+        tags: entry?.tags || [], 
+        psychology: entry?.psychology || {},
         mistakes: entry?.mistakes || [], 
         notesBefore: entry?.notesBefore || '', 
         notesAfter: entry?.notesAfter || '', 
@@ -180,6 +187,9 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const entryPriceRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [tagInput, setTagInput] = useState('');
+    const [allTags, setAllTags] = useState<string[]>([]);
+
     useEffect(() => {
         const loadInitialData = async () => {
              try {
@@ -192,6 +202,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                     const defaultSettings: RiskSettings = { accountBalance: 10000, strategy: 'fixed_percent', fixedPercent: { risk: 1 }, antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }};
                     setRiskSettings(defaultSettings);
                 }
+                const existingTags = await getAllTags();
+                setAllTags(existingTags);
             } catch(e) { console.error(e) }
         };
         loadInitialData();
@@ -242,12 +254,42 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         };
     }, [formData, riskSettings, effectiveSide]);
 
+     const suggestedTags = useMemo(() => {
+        const suggestions = new Set<string>();
+        if (calculations.isValid && parseFloat(calculations.rr) >= 3) {
+            suggestions.add('ریسک به ریوارد بالا');
+        }
+        if (formData.symbol?.toLowerCase().includes('usd')) {
+            suggestions.add('جفت ارز اصلی');
+        }
+        if (formData.symbol?.toLowerCase().includes('jpy')) {
+            suggestions.add('ین ژاپن');
+        }
+        // Simple check for NY session (13-22 UTC)
+        const currentUTCHour = new Date().getUTCHours();
+        if (currentUTCHour >= 13 && currentUTCHour < 22) {
+            suggestions.add('جلسه نیویورک');
+        }
+        return Array.from(suggestions).filter(t => !formData.tags?.includes(t));
+    }, [formData.symbol, calculations.rr, formData.tags]);
+
     const togglePsychoAnalysis = () => setIsPsychoAnalysisOpen(p => !p);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const isNumberField = e.target instanceof HTMLInputElement && e.target.type === 'number';
         setFormData(prev => ({ ...prev, [name]: isNumberField ? (value === '' ? undefined : parseFloat(value)) : value }));
+    };
+    
+    const handlePsychologyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            psychology: {
+                ...prev.psychology,
+                [name]: value,
+            }
+        }));
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,9 +306,27 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         reader.readAsDataURL(file);
     };
 
-    const handleEmotionSelect = (emotionValue: string) => setFormData(prev => ({ ...prev, emotions: prev.emotions?.includes(emotionValue) ? [] : [emotionValue] }));
     const handleMultiSelect = (name: 'mistakes', value: string) => setFormData(prev => ({ ...prev, [name]: (prev[name] || []).includes(value) ? (prev[name] || []).filter(v => v !== value) : [...(prev[name] || []), value] }));
 
+    const handleAddTag = (tag: string) => {
+        const trimmedTag = tag.trim();
+        if (trimmedTag && !formData.tags?.includes(trimmedTag)) {
+            setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), trimmedTag] }));
+        }
+        setTagInput('');
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(tag => tag !== tagToRemove) }));
+    };
+
+    const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            handleAddTag(tagInput);
+        }
+    };
+    
     const handleSubmit = async (e: React.FormEvent | KeyboardEvent) => {
         e.preventDefault();
         
@@ -404,7 +464,45 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                             </button>
                             {isPsychoAnalysisOpen && <div className="p-4 border-t dark:border-gray-600 space-y-4">
                                 <div><label className="block text-sm font-medium mb-2">ستاپ معاملاتی</label><select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                                <div><label className="block text-sm font-medium mb-2">احساسات غالب</label><div className="flex justify-around items-center gap-2">{singleEmotionMap.map(emo => (<button key={emo.value} type="button" onClick={() => handleEmotionSelect(emo.value)} className={`flex-1 p-2 rounded-lg border-2 transition-all text-center ${formData.emotions?.includes(emo.value) ? emo.selectedClasses : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}`}><span className="text-3xl">{emo.emoji}</span><span className="block text-xs mt-1">{emo.value}</span></button>))}</div></div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                     <div><label className="block text-sm font-medium mb-1">احساس قبل از ورود</label><select name="emotionBefore" value={formData.psychology?.emotionBefore || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                                     <div><label className="block text-sm font-medium mb-1">انگیزه ورود</label><select name="entryReason" value={formData.psychology?.entryReason || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                                     <div><label className="block text-sm font-medium mb-1">احساس بعد از خروج</label><select name="emotionAfter" value={formData.psychology?.emotionAfter || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">تگ‌ها</label>
+                                    <div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                        {formData.tags?.map(tag => (
+                                            <div key={tag} className="flex items-center gap-1 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">
+                                                {tag}
+                                                <button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button>
+                                            </div>
+                                        ))}
+                                        <input 
+                                            type="text" 
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={handleTagInputKeyDown}
+                                            placeholder="افزودن تگ..."
+                                            className="bg-transparent focus:outline-none flex-grow"
+                                            list="tag-suggestions"
+                                        />
+                                        <datalist id="tag-suggestions">
+                                            {allTags.filter(t => !formData.tags?.includes(t) && t.toLowerCase().includes(tagInput.toLowerCase())).map(t => <option key={t} value={t} />)}
+                                        </datalist>
+                                    </div>
+                                    {suggestedTags.length > 0 && <div className="flex flex-wrap gap-1 mt-2">
+                                        <span className="text-xs text-gray-500">پیشنهاد هوشمند:</span>
+                                        {suggestedTags.map(tag => (
+                                            <button key={tag} type="button" onClick={() => handleAddTag(tag)} className="px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 rounded-full hover:bg-teal-200 dark:hover:bg-teal-700">
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>}
+                                </div>
+                                
                                 <div><label className="block text-sm font-medium mb-2">اشتباهات</label><div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('mistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${formData.mistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea><textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea></div>
                             </div>}

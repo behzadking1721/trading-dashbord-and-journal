@@ -40,9 +40,15 @@ const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({ isOpen, onClose, entr
                 return;
             }
 
-            const formattedTrades = tradesToAnalyze.map(t => 
-                `- نماد: ${t.symbol}, جهت: ${t.side}, سود/ضرر: ${t.profitOrLoss.toFixed(2)}$, وضعیت: ${t.status}, ستاپ: ${t.setupName || 'نامشخص'}, احساسات: ${t.emotions?.join(', ') || 'ثبت نشده'}, اشتباهات: ${t.mistakes?.join(', ') || 'ثبت نشده'}`
-            ).join('\n');
+            // FIX: Replace `t.emotions` which does not exist with `t.psychology` fields.
+            const formattedTrades = tradesToAnalyze.map(t => {
+                const emotions = [
+                    t.psychology?.emotionBefore,
+                    t.psychology?.emotionAfter
+                ].filter(Boolean).join(' -> ');
+
+                return `- نماد: ${t.symbol}, جهت: ${t.side}, سود/ضرر: ${t.profitOrLoss.toFixed(2)}$, وضعیت: ${t.status}, ستاپ: ${t.setupName || 'نامشخص'}, احساسات: ${emotions || 'ثبت نشده'}, اشتباهات: ${t.mistakes?.join(', ') || 'ثبت نشده'}`;
+            }).join('\n');
 
             const prompt = `
                 شما یک مربی حرفه‌ای معامله‌گری و روانشناس هستید. لیست معاملات اخیر از ژورنال یک کاربر در زیر آمده است. داده‌های هر معامله شامل: نماد، جهت (خرید/فروش)، سود/ضرر (PnL)، وضعیت (برد/باخت)، نام ستاپ، احساسات و اشتباهات ثبت‌شده است.

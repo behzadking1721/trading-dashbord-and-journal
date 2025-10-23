@@ -66,6 +66,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     {/* Side column */}
                     <div className="lg:col-span-1 space-y-6">
+                        {renderWidget('ai_summary')}
                         {renderWidget('sessions_clock')}
                         {renderWidget('forex_news')}
                     </div>

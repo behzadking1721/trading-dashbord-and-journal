@@ -2,7 +2,7 @@ import React from 'react';
 import { lazy } from 'react';
 import {
     LineChart, Flame, Globe, History, ShieldAlert,
-    TrendingUp, ListChecks, Wallet
+    TrendingUp, ListChecks, Wallet, Sparkles
 } from 'lucide-react';
 
 export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
@@ -13,6 +13,7 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
   risk_management: lazy(() => import('./components/widgets/RiskManagementWidget')),
   performance_analytics: lazy(() => import('./components/widgets/PerformanceAnalyticsWidget')),
   trading_checklist: lazy(() => import('./components/widgets/TradingChecklistWidget')),
+  ai_summary: lazy(() => import('./components/widgets/AISummaryWidget')),
   wallet_overview: lazy(() => import('./components/widgets/WalletOverviewWidget')),
 };
 
@@ -24,5 +25,6 @@ export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.E
   risk_management: { title: 'مدیریت ریسک', icon: ShieldAlert, description: 'تحلیل ریسک فعال و توزیع نمادها.' },
   performance_analytics: { title: 'تحلیل عملکرد', icon: TrendingUp, description: 'شاخص‌های کلیدی عملکرد مانند نرخ برد و R/R.' },
   trading_checklist: { title: 'چک‌لیست ترید', icon: ListChecks, description: 'چک‌لیست ستاپ معاملاتی فعال شما.' },
+  ai_summary: { title: 'تحلیل هوشمند بازار', icon: Sparkles, description: 'دریافت خلاصه‌ای از وضعیت بازار با کمک هوش مصنوعی.' },
   wallet_overview: { title: 'نمای کلی کیف پول', icon: Wallet, description: 'نمایش موجودی و سرمایه کل حساب.' },
 };

@@ -84,6 +84,23 @@ export const getJournalEntries = async (): Promise<JournalEntry[]> => {
   }
 };
 
+export const getAllTags = async (): Promise<string[]> => {
+  try {
+    const db = await getDb();
+    const entries = await db.getAll(JOURNAL_STORE);
+    const tagSet = new Set<string>();
+    entries.forEach(entry => {
+      if (entry.tags && Array.isArray(entry.tags)) {
+        entry.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    return Array.from(tagSet).sort();
+  } catch (error) {
+    console.error("Failed to get all tags:", error);
+    return [];
+  }
+};
+
 export const getLatestJournalEntries = async (limit: number): Promise<JournalEntry[]> => {
   try {
     const db = await getDb();
