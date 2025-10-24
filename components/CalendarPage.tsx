@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bell, Pin, Filter, X, Flame, Search, CalendarPlus, Check, Calendar as CalendarIcon } from 'lucide-react';
+import { Bell, Pin, Filter, X, Flame, Search, CalendarPlus, Check, Calendar as CalendarIcon, Newspaper } from 'lucide-react';
 import { addAlert } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
 import type { NewsAlert, EconomicEvent } from '../types';
+import Card from './shared/Card';
+import IranianBourseNewsWidget from './widgets/IranianBourseNewsWidget';
 
 
 // --- CALENDAR HELPERS ---
@@ -366,66 +368,76 @@ const CalendarPage: React.FC = () => {
 
     return (
         <div className="p-6 space-y-6">
-            <h1 className="text-2xl font-bold">تقویم اقتصادی</h1>
+            <h1 className="text-2xl font-bold">تقویم و اخبار اقتصادی</h1>
             
-            <div className="p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border dark:border-gray-700 space-y-4">
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm">
-                    <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-200 dark:bg-gray-700">
-                        {(['today', 'week', 'custom'] as const).map(filter => (
-                            <button key={filter} onClick={() => setTimeFilter(filter)} className={`px-3 py-1 rounded-md text-sm font-semibold ${timeFilter === filter ? 'bg-white dark:bg-gray-800 shadow' : 'text-gray-600 dark:text-gray-300'}`}>
-                                {{ 'today': 'امروز', 'week': 'هفته جاری', 'custom': 'سفارشی' }[filter]}
-                            </button>
-                        ))}
-                    </div>
-                    {timeFilter === 'custom' && (
-                        <div className="flex items-center gap-2 animate-fade-in">
-                             <input type="date" value={customDateRange.start} onChange={e => setCustomDateRange(prev => ({...prev, start: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
-                             <span>تا</span>
-                             <input type="date" value={customDateRange.end} onChange={e => setCustomDateRange(prev => ({...prev, end: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
-                        </div>
-                    )}
-                     <div className="flex items-center gap-3">
-                        <span className="font-semibold">اهمیت:</span>
-                        {ALL_IMPORTANCES.map(imp => (
-                           <label key={imp} className="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" checked={importanceFilter.includes(imp)} onChange={() => setImportanceFilter(prev => prev.includes(imp) ? prev.filter(i => i !== imp) : [...prev, imp])} className="rounded" />
-                                {imp === "High" ? "بالا" : imp === "Medium" ? "متوسط" : "پایین"}
-                           </label>
-                        ))}
-                    </div>
-                     <div className="flex items-center gap-3">
-                        <span className="font-semibold">ارز:</span>
-                        <div className="flex items-center gap-1.5">
-                             {ALL_CURRENCIES.slice(0,5).map(curr => (
-                                <label key={curr} className="flex items-center gap-1 cursor-pointer">
-                                    <input type="checkbox" checked={currencyFilter.includes(curr)} onChange={() => setCurrencyFilter(prev => prev.includes(curr) ? prev.filter(c => c !== curr) : [...prev, curr])} className="rounded" />
-                                    {curr}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border dark:border-gray-700 space-y-4">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm">
+                            <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-200 dark:bg-gray-700">
+                                {(['today', 'week', 'custom'] as const).map(filter => (
+                                    <button key={filter} onClick={() => setTimeFilter(filter)} className={`px-3 py-1 rounded-md text-sm font-semibold ${timeFilter === filter ? 'bg-white dark:bg-gray-800 shadow' : 'text-gray-600 dark:text-gray-300'}`}>
+                                        {{ 'today': 'امروز', 'week': 'هفته جاری', 'custom': 'سفارشی' }[filter]}
+                                    </button>
+                                ))}
+                            </div>
+                            {timeFilter === 'custom' && (
+                                <div className="flex items-center gap-2 animate-fade-in">
+                                    <input type="date" value={customDateRange.start} onChange={e => setCustomDateRange(prev => ({...prev, start: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
+                                    <span>تا</span>
+                                    <input type="date" value={customDateRange.end} onChange={e => setCustomDateRange(prev => ({...prev, end: e.target.value}))} className="p-1.5 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-xs"/>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <span className="font-semibold">اهمیت:</span>
+                                {ALL_IMPORTANCES.map(imp => (
+                                <label key={imp} className="flex items-center gap-1.5 cursor-pointer">
+                                        <input type="checkbox" checked={importanceFilter.includes(imp)} onChange={() => setImportanceFilter(prev => prev.includes(imp) ? prev.filter(i => i !== imp) : [...prev, imp])} className="rounded" />
+                                        {imp === "High" ? "بالا" : imp === "Medium" ? "متوسط" : "پایین"}
                                 </label>
-                            ))}
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="font-semibold">ارز:</span>
+                                <div className="flex items-center gap-1.5">
+                                    {ALL_CURRENCIES.slice(0,5).map(curr => (
+                                        <label key={curr} className="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" checked={currencyFilter.includes(curr)} onChange={() => setCurrencyFilter(prev => prev.includes(curr) ? prev.filter(c => c !== curr) : [...prev, curr])} className="rounded" />
+                                            {curr}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div className="rounded-lg shadow-md border dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden">
-                <div className="grid grid-cols-[120px_100px_1fr_100px_200px_100px_100px] gap-4 items-center p-3 text-xs uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                    <span>زمان</span>
-                    <span>ارز</span>
-                    <span>رویداد</span>
-                    <span>اهمیت</span>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                        <span>واقعی</span><span>پیش‌بینی</span><span>قبلی</span>
+                    <div className="rounded-lg shadow-md border dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden">
+                        <div className="grid grid-cols-[120px_100px_1fr_100px_200px_100px_100px] gap-4 items-center p-3 text-xs uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                            <span>زمان</span>
+                            <span>ارز</span>
+                            <span>رویداد</span>
+                            <span>اهمیت</span>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                                <span>واقعی</span><span>پیش‌بینی</span><span>قبلی</span>
+                            </div>
+                            <span className="text-center">شمارش معکوس</span>
+                            <span className="text-right">عملیات</span>
+                        </div>
+                        {loading ? <SkeletonLoader /> : (
+                            <div>
+                                {pinnedEvents.map(event => <EventRow key={event.id} event={event} isPinned={true} />)}
+                                {regularEvents.map(event => <EventRow key={event.id} event={event} isPinned={false} />)}
+                                {filteredEvents.length === 0 && <p className="text-center p-8 text-gray-500">هیچ رویدادی مطابق با فیلترهای شما یافت نشد.</p>}
+                            </div>
+                        )}
                     </div>
-                    <span className="text-center">شمارش معکوس</span>
-                    <span className="text-right">عملیات</span>
                 </div>
-                {loading ? <SkeletonLoader /> : (
-                    <div>
-                        {pinnedEvents.map(event => <EventRow key={event.id} event={event} isPinned={true} />)}
-                        {regularEvents.map(event => <EventRow key={event.id} event={event} isPinned={false} />)}
-                        {filteredEvents.length === 0 && <p className="text-center p-8 text-gray-500">هیچ رویدادی مطابق با فیلترهای شما یافت نشد.</p>}
-                    </div>
-                )}
+
+                <div className="lg:col-span-1">
+                    <Card title="آخرین اخبار بورس ایران" icon={Newspaper}>
+                        <IranianBourseNewsWidget />
+                    </Card>
+                </div>
             </div>
         </div>
     );
