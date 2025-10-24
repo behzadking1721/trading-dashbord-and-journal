@@ -17,7 +17,8 @@ const IranianBourseNewsWidget: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadNews = useCallback(async () => {
+    const loadNews = useCallback(async (isManualRefresh = false) => {
+        if (!isManualRefresh && loading) return;
         setLoading(true);
         setError(null);
         try {
@@ -28,11 +29,13 @@ const IranianBourseNewsWidget: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [loading]);
 
     useEffect(() => {
-        loadNews();
-    }, [loadNews]);
+        loadNews(false);
+        const interval = setInterval(() => loadNews(false), 5 * 60 * 1000); // Auto-refresh every 5 minutes
+        return () => clearInterval(interval);
+    }, []);
 
     const formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -47,43 +50,54 @@ const IranianBourseNewsWidget: React.FC = () => {
         return date.toLocaleDateString('fa-IR');
     };
 
-    if (loading) {
+    const renderContent = () => {
+        if (loading && news.length === 0) {
+            return (
+                <div className="space-y-4">
+                    <NewsItemSkeleton />
+                    <NewsItemSkeleton />
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="flex flex-col items-center justify-center text-center p-4">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                    <p className="mt-3 text-sm text-red-500">{error}</p>
+                </div>
+            );
+        }
+        
         return (
             <div className="space-y-4">
-                <NewsItemSkeleton />
-                <NewsItemSkeleton />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center text-center p-4 h-48">
-                <AlertTriangle className="w-8 h-8 text-red-500" />
-                <p className="mt-3 text-sm text-red-500">{error}</p>
-                <button onClick={loadNews} className="mt-3 text-xs flex items-center gap-2 bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600">
-                    <RefreshCw size={12}/>
-                    تلاش مجدد
-                </button>
+                {news.map(item => (
+                    <div key={item.id} className={`p-3 rounded-lg border-l-4 ${item.isImportant ? 'bg-amber-500/10 border-amber-500' : 'bg-gray-100 dark:bg-gray-700/50 border-transparent'}`}>
+                        <h4 className="font-bold text-sm flex items-center gap-2">
+                            {item.isImportant && <Flame size={14} className="text-amber-500" />}
+                            {item.title}
+                        </h4>
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2">
+                            <span>منبع: {item.source}</span>
+                            <span>{formatRelativeTime(item.publishDate)}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed">{item.summary}</p>
+                    </div>
+                ))}
             </div>
         );
     }
 
     return (
-        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-            {news.map(item => (
-                <div key={item.id} className={`p-3 rounded-lg border-l-4 ${item.isImportant ? 'bg-amber-500/10 border-amber-500' : 'bg-gray-100 dark:bg-gray-700/50 border-transparent'}`}>
-                    <h4 className="font-bold text-sm flex items-center gap-2">
-                        {item.isImportant && <Flame size={14} className="text-amber-500" />}
-                        {item.title}
-                    </h4>
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 mb-2">
-                        <span>منبع: {item.source}</span>
-                        <span>{formatRelativeTime(item.publishDate)}</span>
-                    </div>
-                    <p className="text-sm leading-relaxed">{item.summary}</p>
-                </div>
-            ))}
+        <div className="h-[250px] flex flex-col">
+            <div className="flex justify-end mb-2">
+                <button onClick={() => loadNews(true)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="تازه‌سازی دستی">
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''}/>
+                </button>
+            </div>
+            <div className="flex-grow overflow-y-auto pr-2">
+                 {renderContent()}
+            </div>
         </div>
     );
 };

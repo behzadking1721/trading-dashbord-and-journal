@@ -66,7 +66,7 @@ export interface TradingChecklistItem {
 }
 
 export interface TradingSetup {
-    id: string;
+    id:string;
     name: string;
     description: string;
     category: string;
@@ -113,8 +113,9 @@ export type Alert = PriceAlert | NewsAlert;
 export interface NotificationSettings {
     globalEnable: boolean;
     priceAlerts: boolean;
-
     newsAlerts: boolean;
+    cryptoNewsAlerts?: boolean;
+    stockNewsAlerts?: boolean;
 }
 
 export interface RiskSettings {
@@ -146,3 +147,28 @@ export interface FormFieldSetting {
 export type JournalFormSettings = {
     [key in JournalFormField]?: FormFieldSetting;
 };
+
+// --- Calendar Page Settings ---
+export interface CalendarPageVisibility {
+    calendar: boolean;
+    newsFeed: boolean;
+    livePrices: boolean;
+}
+
+// --- News Types ---
+export interface CryptoNews {
+    id: string;
+    title: string;
+    source: string;
+    url: string;
+    published_at: string; // ISO string
+}
+
+export interface GlobalStockNews {
+    id: string;
+    headline: string;
+    source: string;
+    url: string;
+    summary: string;
+    datetime: number; // unix timestamp
+}

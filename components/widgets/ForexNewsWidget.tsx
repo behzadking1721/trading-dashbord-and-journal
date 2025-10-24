@@ -114,13 +114,13 @@ const ForexNewsWidget: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const fetchNews = useCallback(async () => {
+    const fetchNews = useCallback(async (isManualRefresh = false) => {
+        if (!isManualRefresh && loading) return; // Avoid multiple loads on init
         setLoading(true);
         setError(null);
         try {
             const response = await fetch('https://forex-factory-news-api.onrender.com/news');
             if (!response.ok) {
-                // This handles HTTP errors like 404, 500
                 throw new Error(`خطای سرور: ${response.statusText}`);
             }
             const data = await response.json();
@@ -129,7 +129,7 @@ const ForexNewsWidget: React.FC = () => {
                  throw new Error('فرمت پاسخ API نامعتبر است.');
             }
 
-            const latestNews = data.slice(-5).reverse(); // Get last 5 and show newest first
+            const latestNews = data.slice(-5).reverse();
 
             const mappedEvents = latestNews.map((item: any, index: number): EconomicEvent => {
                  const eventTime = parseEventTime(item.date, item.time);
@@ -155,52 +155,51 @@ const ForexNewsWidget: React.FC = () => {
             }
 
         } catch (e: any) {
-            // This catches network errors like "Failed to fetch" (DNS, CORS, server down)
             setError('سرویس اخبار موقتا در دسترس نیست. آخرین داده‌های موجود نمایش داده می‌شود.');
             try {
                 const cachedData = localStorage.getItem(FOREX_NEWS_CACHE_KEY);
                 if (cachedData) {
                     const parsedCache = JSON.parse(cachedData).map((item: any) => ({
                         ...item,
-                        time: new Date(item.time) // Re-hydrate Date objects
+                        time: new Date(item.time)
                     }));
                     setEvents(parsedCache);
                 } else {
-                    // If cache is empty, use mock data
                     setEvents(generateMockData());
                 }
             } catch (cacheError) {
-                // If cache is corrupted or fails, use mock data
                 setEvents(generateMockData());
             }
 
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [loading]);
 
     useEffect(() => {
-        fetchNews();
-    }, [fetchNews]);
+        fetchNews(false);
+        const interval = setInterval(() => fetchNews(false), 5 * 60 * 1000); // Auto-refresh every 5 minutes
+        return () => clearInterval(interval);
+    }, []);
 
     const isHighlighted = (event: EconomicEvent): boolean => {
         const isImportantCurrency = event.currency === 'USD' || event.currency === 'EUR';
-        const isInterestRateNews = event.event.toLowerCase().includes('interest rate') || event.event.toLowerCase().includes('rate') || event.event.toLowerCase().includes('نرخ بهره');
+        const isInterestRateNews = event.event.toLowerCase().includes('rate');
         return isImportantCurrency || isInterestRateNews;
     };
 
 
     const renderContent = () => {
-        if (loading) {
+        if (loading && events.length === 0) {
              return (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-2 pr-1">
                     {[...Array(5)].map((_, i) => <NewsItemSkeleton key={i} />)}
                 </div>
             );
         }
         
         return (
-            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            <div className="space-y-2 pr-1">
                 {events.length > 0 ? events.map(item => (
                     <div 
                         key={item.id} 
@@ -227,19 +226,21 @@ const ForexNewsWidget: React.FC = () => {
     };
 
     return (
-        <div>
+        <div className="h-[250px] flex flex-col">
+             <div className="flex justify-end mb-2">
+                <button onClick={() => fetchNews(true)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="تازه‌سازی دستی">
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''}/>
+                </button>
+            </div>
             {error && !loading && (
-                 <div className="flex items-center gap-3 p-2 mb-3 text-xs text-amber-800 dark:text-amber-200 bg-amber-400/20 rounded-md">
+                 <div className="flex items-center gap-3 p-2 mb-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-400/20 rounded-md">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <div className="flex-grow">
-                        <p>{error}</p>
-                    </div>
-                     <button onClick={fetchNews} className="p-1 rounded-full hover:bg-black/10">
-                        <RefreshCw size={12}/>
-                    </button>
+                    <p className="flex-grow">{error}</p>
                 </div>
             )}
-            {renderContent()}
+            <div className="flex-grow overflow-y-auto">
+                {renderContent()}
+            </div>
         </div>
     );
 };
