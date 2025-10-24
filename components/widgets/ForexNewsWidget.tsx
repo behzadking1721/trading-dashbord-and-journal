@@ -177,7 +177,7 @@ const ForexNewsWidget: React.FC = () => {
     }, [loading]);
 
     useEffect(() => {
-        fetchNews(false);
+        fetchNews(true); // Fetch immediately on mount
         const interval = setInterval(() => fetchNews(false), 5 * 60 * 1000); // Auto-refresh every 5 minutes
         return () => clearInterval(interval);
     }, []);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import type { FinancialCalendarSettings, MarketType } from '../types';
-import { RefreshCw, SlidersHorizontal, Settings, Flame, Coins, BarChart, Beaker } from 'lucide-react';
+import { RefreshCw, Settings, Flame, Coins, BarChart as BarChartIcon, Beaker } from 'lucide-react';
 import { fetchForexEvents } from '../data/forexEvents';
 import { fetchCryptoEvents } from '../data/cryptoEvents';
 import { fetchStocksEvents } from '../data/stocksEvents';
@@ -14,7 +14,7 @@ type TabId = MarketType | 'settings';
 const TABS_CONFIG: { id: TabId, label: string, color: string, icon: React.ElementType, fetchData?: () => Promise<any> }[] = [
     { id: 'forex', label: 'فارکس', color: 'blue', icon: Flame, fetchData: fetchForexEvents },
     { id: 'crypto', label: 'کریپتو', color: 'orange', icon: Coins, fetchData: fetchCryptoEvents },
-    { id: 'stocks', label: 'بورس جهانی', color: 'green', icon: BarChart, fetchData: fetchStocksEvents },
+    { id: 'stocks', label: 'بورس جهانی', color: 'green', icon: BarChartIcon, fetchData: fetchStocksEvents },
     { id: 'commodities', label: 'کالاها', color: 'gray', icon: Beaker, fetchData: fetchCommoditiesEvents },
     { id: 'settings', label: 'تنظیمات', color: 'purple', icon: Settings }
 ];
@@ -34,7 +34,16 @@ const CalendarPage: React.FC = () => {
             try {
                 const saved = localStorage.getItem(CALENDAR_SETTINGS_LS_KEY);
                 if (saved) {
-                    setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+                    // Merge saved settings with defaults to ensure all keys are present
+                    const parsed = JSON.parse(saved);
+                    setSettings(prev => ({
+                        ...prev,
+                        ...parsed,
+                        visibleTabs: {
+                            ...prev.visibleTabs,
+                            ...parsed.visibleTabs
+                        }
+                    }));
                 }
             } catch (e) { console.error("Failed to load calendar settings", e); }
         };
@@ -53,7 +62,6 @@ const CalendarPage: React.FC = () => {
     });
 
     useEffect(() => {
-        // If the active tab is hidden by settings, switch to the first visible tab
         if (!visibleTabs.some(t => t.id === activeTab)) {
             setActiveTab(visibleTabs[0]?.id || 'settings');
         }
@@ -77,7 +85,7 @@ const CalendarPage: React.FC = () => {
             </header>
 
             <div className="border-b border-gray-200 dark:border-gray-700">
-                <nav className="-mb-px flex space-x-4" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
                     {visibleTabs.map(tab => {
                         const colors = tabColorClasses[tab.color] || tabColorClasses.gray;
                         const isActive = activeTab === tab.id;

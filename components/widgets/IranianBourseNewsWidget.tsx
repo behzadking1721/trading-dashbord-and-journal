@@ -32,7 +32,7 @@ const IranianBourseNewsWidget: React.FC = () => {
     }, [loading]);
 
     useEffect(() => {
-        loadNews(false);
+        loadNews(true); // Fetch immediately on mount
         const interval = setInterval(() => loadNews(false), 5 * 60 * 1000); // Auto-refresh every 5 minutes
         return () => clearInterval(interval);
     }, []);

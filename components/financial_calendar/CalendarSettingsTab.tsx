@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FinancialCalendarSettings, MarketType } from '../../types';
-import { Eye, EyeOff, Layout, List } from 'lucide-react';
+import { Layout, List } from 'lucide-react';
 
 interface CalendarSettingsTabProps {
     settings: FinancialCalendarSettings;

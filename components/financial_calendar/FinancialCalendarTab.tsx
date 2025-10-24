@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { MarketEvent } from '../../types';
-import { RefreshCw, Search, AlertTriangle, ChevronDown, Flame, Filter } from 'lucide-react';
+import { RefreshCw, Search, AlertTriangle, ChevronDown } from 'lucide-react';
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -78,7 +78,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
             const data = await fetchData();
             const sortedData = data.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
             setEvents(sortedData);
-            const uniqueCountries = [...new Set(sortedData.map(e => e.countryCode))].sort();
+            const uniqueCountries = [...new Set(sortedData.map(e => e.countryCode).filter(c => c !== 'CRYPTO'))].sort();
             setCountries(uniqueCountries);
         } catch (e: any) {
             setError(e.message || `خطا در دریافت اطلاعات بازار ${market}.`);
@@ -89,7 +89,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     }, [fetchData, market, loading]);
 
     useEffect(() => {
-        loadData(false);
+        loadData(true);
     }, [fetchData]);
 
     useEffect(() => {
@@ -148,9 +148,9 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
                                 {new Date(event.time).toLocaleString('fa-IR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </div>
                             <div className="col-span-1 flex items-center gap-2">
-                                <img src={`https://flagcdn.com/w20/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-5 h-auto rounded-sm" />
+                                {event.countryCode !== 'CRYPTO' && event.countryCode !== 'OPEC' && <img src={`https://flagcdn.com/w20/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-5 h-auto rounded-sm" />}
                             </div>
-                            <div className={viewMode === 'expanded' ? "col-span-4 font-semibold" : "col-span-5 font-semibold"}>{event.event} ({event.currency})</div>
+                            <div className={`${viewMode === 'expanded' ? "col-span-4" : "col-span-5"} font-semibold`}>{event.event} ({event.currency})</div>
                             <div className="col-span-1 flex justify-center"><ImpactIndicator impact={event.impact} /></div>
                             {viewMode === 'expanded' && <div className="col-span-2 grid grid-cols-3 gap-1 text-center text-xs font-mono">
                                 <span className={event.actual ? `font-bold ${colors.text}` : 'text-gray-500'}>{event.actual ?? '...'}</span>
@@ -176,7 +176,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
                             placeholder="جستجوی رویداد یا نماد..."
                             value={filters.search}
                             onChange={e => handleFilterChange('search', e.target.value)}
-                            className="w-full sm:w-64 p-2 pr-10 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm focus:outline-none focus:ring-2"
+                            className={`w-full sm:w-64 p-2 pr-10 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 ${colors.ring}`}
                         />
                     </div>
                     <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
                             <button
                                 key={impact}
                                 onClick={() => handleImpactFilterToggle(impact)}
-                                className={`px-3 py-1.5 text-xs rounded-full border-2 transition-colors ${filters.impact.includes(impact) ? `${colors.bg} text-white ${colors.border}` : 'bg-transparent border-gray-300 dark:border-gray-600'}`}
+                                className={`px-3 py-1.5 text-xs rounded-full border-2 transition-colors ${filters.impact.includes(impact) ? `${colors.bg} text-white ${colors.border}` : 'bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                             >
                                 {impact === 'High' ? 'بالا' : impact === 'Medium' ? 'متوسط' : 'پایین'}
                             </button>
@@ -194,7 +194,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
                         <select
                             value={filters.country}
                             onChange={e => handleFilterChange('country', e.target.value)}
-                            className="appearance-none w-full sm:w-32 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm focus:outline-none focus:ring-2"
+                            className={`appearance-none w-full sm:w-32 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 ${colors.ring}`}
                         >
                             <option value="">همه کشورها</option>
                             {countries.map(c => <option key={c} value={c}>{c}</option>)}
