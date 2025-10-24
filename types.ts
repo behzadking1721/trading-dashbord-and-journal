@@ -11,6 +11,7 @@ export interface EconomicEvent {
   forecast: string | null;
   previous: string | null;
   sourceUrl?: string;
+  sentiment?: 'Bullish' | 'Bearish' | 'Neutral';
 }
 
 

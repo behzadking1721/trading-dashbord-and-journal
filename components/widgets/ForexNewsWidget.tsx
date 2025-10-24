@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { EconomicEvent, NewsAlert } from '../../types';
-import { Pin, Bell, Flame, CalendarPlus, Check } from 'lucide-react';
+import { Pin, Bell, Flame, CalendarPlus, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { addAlert } from '../../db';
 import { useNotification } from '../../contexts/NotificationContext';
 
@@ -55,12 +55,12 @@ const downloadICSFile = (event: EconomicEvent) => {
 // --- MOCK DATA GENERATOR ---
 const generateMockEventsForToday = (): EconomicEvent[] => {
     const events: Omit<EconomicEvent, 'id' | 'time' | 'actual'>[] = [
-      { event: 'Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K', sourceUrl: 'https://www.bls.gov/news.release/empsit.nr0.htm' },
-      { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '' },
-      { event: 'Retail Sales m/m', currency: 'GBP', countryCode: 'GB', importance: 'Medium', forecast: '0.5%', previous: '0.2%' },
-      { event: 'Unemployment Rate', currency: 'CAD', countryCode: 'CA', importance: 'Low', forecast: '5.8%', previous: '5.8%' },
-      { event: 'CPI m/m', currency: 'USD', countryCode: 'US', importance: 'Medium', forecast: '0.3%', previous: '0.4%' },
-      { event: 'BoJ Policy Rate', currency: 'JPY', countryCode: 'JP', importance: 'High', forecast: '0.10%', previous: '0.10%' },
+      { event: 'Fed Interest Rate Decision', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '5.50%', previous: '5.50%', sourceUrl: 'https://www.federalreserve.gov', sentiment: 'Neutral' },
+      { event: 'US Non-Farm Payrolls', currency: 'USD', countryCode: 'US', importance: 'High', forecast: '180K', previous: '175K', sentiment: 'Bullish' },
+      { event: 'ECB Press Conference', currency: 'EUR', countryCode: 'EU', importance: 'High', forecast: '', previous: '', sentiment: 'Bearish' },
+      { event: 'Retail Sales m/m', currency: 'GBP', countryCode: 'GB', importance: 'Medium', forecast: '0.5%', previous: '0.2%', sentiment: 'Bullish' },
+      { event: 'CPI m/m', currency: 'EUR', countryCode: 'EU', importance: 'Medium', forecast: '0.3%', previous: '0.4%', sentiment: 'Neutral' },
+      { event: 'BoJ Policy Rate', currency: 'JPY', countryCode: 'JP', importance: 'High', forecast: '0.10%', previous: '0.10%', sentiment: 'Neutral' },
     ];
 
     // Generate events only in the future for today
@@ -115,6 +115,24 @@ const Countdown: React.FC<{ targetDate: Date }> = ({ targetDate }) => {
                 {`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
             </span>
         </div>
+    );
+};
+
+const SentimentIcon: React.FC<{ sentiment?: 'Bullish' | 'Bearish' | 'Neutral' }> = ({ sentiment }) => {
+    if (!sentiment) return null;
+
+    const sentimentMap = {
+        Bullish: { icon: TrendingUp, color: 'text-green-500', label: 'صعودی' },
+        Bearish: { icon: TrendingDown, color: 'text-red-500', label: 'نزولی' },
+        Neutral: { icon: Minus, color: 'text-gray-500', label: 'خنثی' },
+    };
+
+    const { icon: Icon, color, label } = sentimentMap[sentiment];
+    
+    return (
+        <span className={color} title={`تحلیل احساسات: ${label}`}>
+            <Icon size={14} />
+        </span>
     );
 };
 
@@ -224,16 +242,26 @@ const ForexNewsWidget: React.FC = () => {
         }
     };
 
+    const isHighlighted = (event: EconomicEvent): boolean => {
+        const isImportantCurrency = event.currency === 'USD' || event.currency === 'EUR';
+        const isInterestRateNews = event.event.toLowerCase().includes('interest rate') || event.event.toLowerCase().includes('rate') || event.event.toLowerCase().includes('نرخ بهره');
+        return isImportantCurrency || isInterestRateNews;
+    };
+
     const upcomingEvents = events.filter(e => e.time.getTime() > Date.now());
 
     return (
         <div>
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 5).map(item => (
-                    <div key={item.id} className="grid grid-cols-[auto,1fr,auto] items-center gap-3 text-sm p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                    <div 
+                        key={item.id} 
+                        className={`grid grid-cols-[auto,1fr,auto] items-center gap-3 text-sm p-2 rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isHighlighted(item) ? 'border-l-4 border-indigo-500 bg-indigo-500/10' : ''}`}
+                    >
                         <ImportanceIndicator importance={item.importance} />
                         <div>
                             <p className="font-semibold truncate flex items-center gap-2">
+                                <SentimentIcon sentiment={item.sentiment} />
                                 <img src={`https://flagcdn.com/w20/${item.countryCode.toLowerCase()}.png`} alt={item.countryCode} className="w-5 h-auto rounded-sm" />
                                 {item.event}
                             </p>
