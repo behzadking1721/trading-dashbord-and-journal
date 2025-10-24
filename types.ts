@@ -148,7 +148,33 @@ export type JournalFormSettings = {
     [key in JournalFormField]?: FormFieldSetting;
 };
 
-// --- Calendar Page Settings ---
+// --- Financial Calendar Page Types ---
+export type MarketType = 'forex' | 'crypto' | 'stocks' | 'commodities';
+
+export interface MarketEvent {
+    id: string;
+    time: string; // ISO String
+    countryCode: string;
+    currency: string;
+    event: string;
+    impact: 'High' | 'Medium' | 'Low';
+    actual: string | null;
+    forecast: string | null;
+    previous: string | null;
+}
+
+export interface FinancialCalendarSettings {
+    visibleTabs: {
+        forex: boolean;
+        crypto: boolean;
+        stocks: boolean;
+        commodities: boolean;
+    };
+    viewMode: 'compact' | 'expanded';
+    // notification settings can be added later
+}
+
+// Deprecated
 export interface CalendarPageVisibility {
     calendar: boolean;
     newsFeed: boolean;
