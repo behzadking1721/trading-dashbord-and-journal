@@ -26,7 +26,6 @@ const LivePricesWidget: React.FC = () => {
         return initialPrices;
     });
 
-    // Fix: Use ReturnType<typeof setTimeout> for browser compatibility instead of NodeJS.Timeout
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {

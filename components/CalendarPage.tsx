@@ -55,7 +55,7 @@ const CalendarPage: React.FC = () => {
                 
                 {visibility.calendar && (
                     <div className="lg:col-span-2">
-                        <Card title="تقویم اقتصادی" icon={CalendarIcon}>
+                         <Card title="تقویم اقتصادی" icon={CalendarIcon}>
                             <WidgetSuspense>
                                 <EconomicCalendarWidget />
                             </WidgetSuspense>
