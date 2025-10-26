@@ -102,7 +102,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <Sidebar currentPage={currentPage} />
-      <main className="flex-grow">
+      <main className="flex-1 min-w-0 overflow-y-auto">
         <Suspense fallback={
           <div className="w-full h-screen flex items-center justify-center">
             <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
@@ -160,7 +160,7 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={themeContextValue}>
       <NotificationProvider>
-          <div className={`flex min-h-screen transition-colors duration-300 bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200`}>
+          <div className={`flex h-screen overflow-hidden transition-colors duration-300 bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200`}>
               <AppContent />
           </div>
       </NotificationProvider>
