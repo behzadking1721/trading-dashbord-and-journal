@@ -70,7 +70,7 @@ const AISummaryWidget: React.FC = () => {
     const renderContent = () => {
         if (loading) {
             return (
-                <div className="flex flex-col items-center justify-center text-center p-4 h-48">
+                <div className="flex flex-col items-center justify-center text-center p-4 h-full">
                     <RefreshCw className="w-8 h-8 animate-spin text-indigo-400" />
                     <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">در حال دریافت تحلیل...</p>
                 </div>
@@ -79,7 +79,7 @@ const AISummaryWidget: React.FC = () => {
 
         if (error) {
             return (
-                <div className="flex flex-col items-center justify-center text-center p-4 h-48">
+                <div className="flex flex-col items-center justify-center text-center p-4 h-full">
                     <AlertTriangle className="w-8 h-8 text-red-500" />
                     <p className="mt-3 text-sm text-red-500">{error}</p>
                     <button onClick={generateSummary} className="mt-3 text-xs bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600">
@@ -106,7 +106,7 @@ const AISummaryWidget: React.FC = () => {
         }
 
         return (
-             <div className="flex flex-col items-center justify-center text-center p-4 h-48">
+             <div className="flex flex-col items-center justify-center text-center p-4 h-full">
                 <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">
                    یک دید کلی از وضعیت بازار امروز با کمک هوش مصنوعی دریافت کنید.
                 </p>
@@ -119,7 +119,7 @@ const AISummaryWidget: React.FC = () => {
     }
     
     return (
-        <div className="min-h-[240px] flex flex-col justify-center">
+        <div className="h-full flex flex-col justify-center">
             {renderContent()}
         </div>
     );

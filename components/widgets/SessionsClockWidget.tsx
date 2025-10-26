@@ -31,7 +31,7 @@ const SessionsClockWidget: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col justify-around">
         {/* Time Display */}
         <div className="flex justify-around p-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
             <div className="text-center">

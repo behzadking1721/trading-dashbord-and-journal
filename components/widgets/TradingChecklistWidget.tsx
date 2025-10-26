@@ -54,7 +54,7 @@ const TradingChecklistWidget: React.FC = () => {
     const completionPercentage = activeSetup ? (activeSetup.checklist.filter(item => checklistStates[`${activeSetup.id}-${item.id}`]).length / activeSetup.checklist.length) * 100 : 0;
 
     return (
-        <div className="space-y-3">
+        <div className="h-full flex flex-col space-y-3">
             {setups.length > 0 && activeSetup ? (
                 <>
                     <div className="relative">
@@ -89,7 +89,7 @@ const TradingChecklistWidget: React.FC = () => {
                     ))}
                 </>
             ) : (
-                <div className="text-center text-gray-500 text-sm p-4">
+                <div className="text-center text-gray-500 text-sm p-4 flex-grow flex flex-col justify-center">
                     <p>هیچ ستاپ معاملاتی تعریف نشده است.</p>
                     <a href="#/settings" className="text-indigo-500 hover:underline">برای شروع به صفحه تنظیمات بروید.</a>
                 </div>

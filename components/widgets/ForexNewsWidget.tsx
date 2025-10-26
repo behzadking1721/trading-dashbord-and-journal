@@ -226,7 +226,7 @@ const ForexNewsWidget: React.FC = () => {
     };
 
     return (
-        <div className="h-[250px] flex flex-col">
+        <div className="h-full flex flex-col">
              <div className="flex justify-end mb-2">
                 <button onClick={() => fetchNews(true)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" title="تازه‌سازی دستی">
                     <RefreshCw size={14} className={loading ? 'animate-spin' : ''}/>

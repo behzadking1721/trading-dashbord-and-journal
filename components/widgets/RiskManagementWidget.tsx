@@ -63,7 +63,7 @@ const RiskManagementWidget: React.FC = () => {
     }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col justify-around space-y-4">
        {loading ? (
             <div className="animate-pulse space-y-2">
                 <div className="flex justify-between items-center">

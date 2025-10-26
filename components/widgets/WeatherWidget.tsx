@@ -129,12 +129,12 @@ const WeatherWidget: React.FC = () => {
     }, [fetchWeather]);
 
     if (loading) {
-        return <div className="h-48"><SkeletonLoader /></div>;
+        return <div className="h-full flex items-center justify-center"><SkeletonLoader /></div>;
     }
     
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-48 text-center">
+            <div className="h-full flex flex-col items-center justify-center text-center">
                 <AlertTriangle className="w-8 h-8 text-red-500 mb-2" />
                 <p className="text-sm text-red-500">{error}</p>
                 <button onClick={fetchWeather} className="mt-3 text-xs flex items-center gap-2 bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600">

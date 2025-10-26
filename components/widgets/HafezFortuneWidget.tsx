@@ -20,7 +20,7 @@ const HafezFortuneWidget: React.FC = () => {
     }, [fortune]);
 
     return (
-        <div className="space-y-3">
+        <div className="h-full flex flex-col justify-between space-y-3">
              <div className="p-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
                 <p className="text-sm whitespace-pre-wrap leading-relaxed text-center font-serif">{fortune.poem}</p>
             </div>
