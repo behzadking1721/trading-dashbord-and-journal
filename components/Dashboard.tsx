@@ -37,26 +37,26 @@ const saveToLS = (key: string, value: any) => {
 
 const defaultLayouts = {
   lg: [
-    // Top row of KPIs
-    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 6, minW: 3, minH: 5 },
-    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 6, minW: 3, minH: 5 },
-    { i: 'risk_management', x: 6, y: 0, w: 3, h: 6, minW: 3, minH: 6 },
-    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 6, minW: 3, minH: 6 },
+    // Top Row: Analysis (left) and Risk (right)
+    { i: 'performance_analytics', x: 6, y: 0, w: 6, h: 8, minW: 4, minH: 6 },
+    { i: 'risk_management', x: 0, y: 0, w: 6, h: 8, minW: 4, minH: 6 },
     
-    // Main content area: chart and checklist
-    { i: 'price_chart', x: 0, y: 6, w: 8, h: 15, minW: 6, minH: 10 },
-    { i: 'trading_checklist', x: 8, y: 6, w: 4, h: 15, minW: 3, minH: 10 },
-
-    // Mid section: trades and news
-    { i: 'trades_table', x: 0, y: 21, w: 8, h: 9, minW: 6, minH: 7 },
-    { i: 'forex_news', x: 8, y: 21, w: 4, h: 9, minW: 3, minH: 8 },
-
-    // Bottom row of widgets
-    { i: 'ai_summary', x: 0, y: 30, w: 4, h: 9, minW: 3, minH: 7 },
-    { i: 'weather', x: 4, y: 30, w: 4, h: 9, minW: 4, minH: 8 },
-    { i: 'hafez_fortune', x: 8, y: 30, w: 4, h: 9, minW: 3, minH: 7 },
+    // Middle Row: Large Journal
+    { i: 'trades_table', x: 0, y: 8, w: 12, h: 12, minW: 8, minH: 10 },
+    
+    // Bottom Row: Capital (left) and Status (right)
+    { i: 'wallet_overview', x: 6, y: 20, w: 6, h: 7, minW: 4, minH: 5 },
+    { i: 'sessions_clock', x: 0, y: 20, w: 6, h: 7, minW: 3, minH: 5 },
   ]
 };
+
+const defaultVisibleWidgets = [
+    'performance_analytics',
+    'risk_management',
+    'trades_table',
+    'wallet_overview',
+    'sessions_clock'
+];
 
 const Dashboard: React.FC = () => {
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -66,12 +66,23 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         const loadVisibility = () => {
-            const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, {});
-            const allVisible: WidgetVisibility = {};
-            Object.keys(WIDGET_DEFINITIONS).forEach(key => {
-                allVisible[key] = savedVisibility[key] !== false;
-            });
-            setWidgetVisibility(allVisible);
+            const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
+            
+            if (savedVisibility) {
+                // If user has settings, respect them but ensure all keys exist
+                const newVisibility: WidgetVisibility = {};
+                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
+                    newVisibility[key] = savedVisibility[key] !== false;
+                });
+                setWidgetVisibility(newVisibility);
+            } else {
+                // No saved settings, apply the new focused default
+                const newDefaultVisibility: WidgetVisibility = {};
+                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
+                    newDefaultVisibility[key] = defaultVisibleWidgets.includes(key);
+                });
+                setWidgetVisibility(newDefaultVisibility);
+            }
         };
         loadVisibility();
         window.addEventListener('storage', loadVisibility);
@@ -128,7 +139,7 @@ const Dashboard: React.FC = () => {
                 onLayoutChange={onLayoutChange}
                 breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                 cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                rowHeight={40}
+                rowHeight={30}
                 draggableHandle=".card-drag-handle"
                 isDraggable={!isLayoutLocked}
                 isResizable={!isLayoutLocked}
