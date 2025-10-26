@@ -37,25 +37,35 @@ const saveToLS = (key: string, value: any) => {
 
 const defaultLayouts = {
   lg: [
-    // Top Row: Analysis (left) and Risk (right)
-    { i: 'performance_analytics', x: 6, y: 0, w: 6, h: 9, minW: 4, minH: 6 },
-    { i: 'risk_management', x: 0, y: 0, w: 6, h: 9, minW: 4, minH: 6 },
-    
-    // Middle Row: Large Journal
-    { i: 'trades_table', x: 0, y: 9, w: 12, h: 14, minW: 8, minH: 10 },
-    
-    // Bottom Row: Capital (left) and Status (right)
-    { i: 'wallet_overview', x: 6, y: 23, w: 6, h: 9, minW: 4, minH: 5 },
-    { i: 'sessions_clock', x: 0, y: 23, w: 6, h: 9, minW: 3, minH: 5 },
+    // Top Row: KPIs
+    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+    { i: 'risk_management', x: 6, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+
+    // Main Area: Chart (left) and Tools (right)
+    { i: 'price_chart', x: 0, y: 5, w: 8, h: 14, minW: 6, minH: 10 },
+    { i: 'trading_checklist', x: 8, y: 5, w: 4, h: 7, minW: 3, minH: 6 },
+    { i: 'trades_table', x: 8, y: 12, w: 4, h: 7, minW: 4, minH: 7 },
+
+    // Bottom Row: News & Insights
+    { i: 'forex_news', x: 0, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
+    { i: 'ai_summary', x: 4, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
+    { i: 'hafez_fortune', x: 8, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
   ]
 };
 
 const defaultVisibleWidgets = [
     'performance_analytics',
-    'risk_management',
-    'trades_table',
     'wallet_overview',
-    'sessions_clock'
+    'risk_management',
+    'sessions_clock',
+    'price_chart',
+    'trading_checklist',
+    'trades_table',
+    'forex_news',
+    'ai_summary',
+    'hafez_fortune'
 ];
 
 const Dashboard: React.FC = () => {
