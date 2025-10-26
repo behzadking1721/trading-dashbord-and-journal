@@ -1,13 +1,10 @@
 import React, { Suspense, useState, lazy, useEffect } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
 import { RefreshCw, Clock, Bell } from 'lucide-react';
 import type { WidgetVisibility } from '../types';
 
 const AlertsManager = lazy(() => import('./AlertsManager'));
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 
@@ -24,34 +21,28 @@ const getFromLS = (key: string, defaultValue: any) => {
     return defaultValue;
 };
 
-const defaultLayouts = {
-  lg: [
-    // Right Column (KPIs) - Visually on the right in RTL
-    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 12 },
-    { i: 'wallet_overview', x: 0, y: 12, w: 3, h: 12 },
-    { i: 'risk_management', x: 0, y: 24, w: 3, h: 12 },
-    
-    // Center Column (Main Workspace)
-    { i: 'price_chart', x: 3, y: 0, w: 6, h: 24 },
-    { i: 'trades_table', x: 3, y: 24, w: 6, h: 12 },
+// Defines the position of each widget within the CSS Grid layout.
+const WIDGET_LAYOUT_CONFIG: { [key: string]: { col: string; row: string; } } = {
+  // Right Column (KPIs) - Visually on the right in RTL
+  performance_analytics: { col: '1 / 4', row: '1 / 2' },
+  wallet_overview:       { col: '1 / 4', row: '2 / 3' },
+  risk_management:       { col: '1 / 4', row: '3 / 4' },
+  
+  // Center Column (Main Workspace)
+  price_chart:           { col: '4 / 10', row: '1 / 3' },
+  trades_table:          { col: '4 / 10', row: '3 / 4' },
 
-    // Left Column (Tools & Context) - Visually on the left in RTL
-    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 12 },
-    { i: 'trading_checklist', x: 9, y: 12, w: 3, h: 12 },
-    { i: 'forex_news', x: 9, y: 24, w: 3, h: 12 },
-  ]
+  // Left Column (Tools & Context) - Visually on the left in RTL
+  sessions_clock:        { col: '10 / 13', row: '1 / 2' },
+  trading_checklist:     { col: '10 / 13', row: '2 / 3' },
+  forex_news:            { col: '10 / 13', row: '3 / 4' },
+  
+  // Bottom Full-width Row
+  ai_summary:            { col: '1 / 5', row: '4 / 5' },
+  weather:               { col: '5 / 9', row: '4 / 5' },
+  hafez_fortune:         { col: '9 / 13', row: '4 / 5' },
 };
 
-const defaultVisibleWidgets = [
-    'performance_analytics',
-    'wallet_overview',
-    'risk_management',
-    'price_chart',
-    'trades_table',
-    'sessions_clock',
-    'trading_checklist',
-    'forex_news',
-];
 
 const Dashboard: React.FC = () => {
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
@@ -61,19 +52,22 @@ const Dashboard: React.FC = () => {
         const loadVisibility = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
-            if (savedVisibility) {
-                const newVisibility: WidgetVisibility = {};
-                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
-                    newVisibility[key] = savedVisibility[key] !== false;
-                });
-                setWidgetVisibility(newVisibility);
-            } else {
-                const newDefaultVisibility: WidgetVisibility = {};
-                Object.keys(WIDGET_DEFINITIONS).forEach(key => {
-                    newDefaultVisibility[key] = defaultVisibleWidgets.includes(key);
-                });
-                setWidgetVisibility(newDefaultVisibility);
-            }
+            const defaultVisibleWidgets = [
+                'performance_analytics',
+                'wallet_overview',
+                'risk_management',
+                'price_chart',
+                'trades_table',
+                'sessions_clock',
+                'trading_checklist',
+                'forex_news',
+            ];
+
+            const newVisibility: WidgetVisibility = {};
+            Object.keys(WIDGET_DEFINITIONS).forEach(key => {
+                newVisibility[key] = savedVisibility ? (savedVisibility[key] !== false) : defaultVisibleWidgets.includes(key);
+            });
+            setWidgetVisibility(newVisibility);
         };
         loadVisibility();
         window.addEventListener('storage', loadVisibility);
@@ -85,8 +79,11 @@ const Dashboard: React.FC = () => {
         const def = WIDGET_DEFINITIONS[key as keyof typeof WIDGET_DEFINITIONS];
         if (!WidgetComponent || !def) return null;
 
+        const layout = WIDGET_LAYOUT_CONFIG[key];
+        if (!layout) return null; 
+
         return (
-            <div key={key}>
+            <div key={key} style={{ gridColumn: layout.col, gridRow: layout.row }}>
                 <Card title={def.title} icon={def.icon}>
                     <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
                         <WidgetComponent />
@@ -117,19 +114,17 @@ const Dashboard: React.FC = () => {
                 </div>
             </header>
 
-            <ResponsiveGridLayout
-                layouts={defaultLayouts}
-                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                rowHeight={30}
-                isDraggable={false}
-                isResizable={false}
-                compactType="vertical"
+            <div
+                className="grid gap-6"
+                style={{
+                    gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+                    gridTemplateRows: 'repeat(3, 290px) auto',
+                }}
             >
                 {Object.keys(WIDGET_DEFINITIONS)
                     .filter(key => widgetVisibility[key])
                     .map(key => createWidget(key))}
-            </ResponsiveGridLayout>
+            </div>
 
 
             <Suspense fallback={null}>
