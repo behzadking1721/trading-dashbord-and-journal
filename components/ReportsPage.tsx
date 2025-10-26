@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { GoogleGenAI } from '@google/genai';
+import { marked } from 'marked';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
 import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Tag } from 'lucide-react';
@@ -34,12 +36,14 @@ const SummarySkeletonCard = () => (
 );
 
 const AnalysisCard: React.FC<{ title: string; icon: React.ElementType; children: React.ReactNode; isLoading: boolean }> = ({ title, icon: Icon, children, isLoading }) => (
-    <div className="p-4 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 min-h-[200px]">
+    <div className="p-4 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 min-h-[200px] flex flex-col">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Icon size={20} className="text-indigo-500" />
             {title}
         </h2>
-        {isLoading ? <SkeletonLoader /> : children}
+        <div className="flex-grow">
+            {isLoading ? <SkeletonLoader /> : children}
+        </div>
     </div>
 );
 
@@ -110,6 +114,10 @@ const ReportsPage: React.FC = () => {
     const [allEntries, setAllEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+    
+    const [aiAnalysis, setAiAnalysis] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [aiError, setAiError] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
@@ -239,6 +247,68 @@ const ReportsPage: React.FC = () => {
         return data;
     }, [closedEntries]);
 
+    const handleAiAnalysis = async () => {
+        setIsAiLoading(true);
+        setAiError('');
+        setAiAnalysis('');
+
+        if (!process.env.API_KEY) {
+            setAiError('کلید API برای هوش مصنوعی تنظیم نشده است.');
+            setIsAiLoading(false);
+            return;
+        }
+
+        if (closedEntries.length < 5) {
+            setAiError('برای یک تحلیل جامع، حداقل به ۵ معامله بسته‌شده نیاز است.');
+            setIsAiLoading(false);
+            return;
+        }
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+            const formattedTrades = closedEntries.slice(-50).map(t => { // Analyze last 50 trades
+                return `- سود/ضرر: ${t.profitOrLoss?.toFixed(2)}$, ستاپ: ${t.setupName || 'نامشخص'}, نماد: ${t.symbol}, انگیزه ورود: ${t.psychology?.entryReason || 'نامشخص'}, اشتباهات: ${t.mistakes?.join(', ') || 'ندارد'}`;
+            }).join('\n');
+
+            const prompt = `
+                شما یک مربی معامله‌گری نخبه و روانشناس بازار هستید. بر اساس لیست معاملات زیر از ژورنال یک کاربر، یک تحلیل عمیق و کاربردی به زبان فارسی ارائه دهید.
+                تحلیل شما باید شامل این بخش‌ها باشد و از Markdown برای قالب‌بندی استفاده کند:
+
+                **۱. نقاط قوت کلیدی (الماس‌های شما):**
+                - شناسایی سودآورترین ستاپ معاملاتی، نماد، یا الگوی رفتاری. مثال: "شما در معاملات با ستاپ 'ادامه روند' روی نمادهای مبتنی بر دلار آمریکا بسیار موفق عمل می‌کنید."
+
+                **۲. چالش‌ها و نقاط ضعف (پاشنه آشیل):**
+                - شناسایی زیان‌ده‌ترین الگوها. مثال: "به نظر می‌رسد معاملات بر اساس انگیزه 'انتقام' یا 'FOMO' تقریباً همیشه به ضرر منجر شده‌اند."
+                - اشاره به رایج‌ترین اشتباه ثبت‌شده و تاثیر آن.
+
+                **۳. تحلیل روانشناسی:**
+                - بررسی ارتباط بین "انگیزه ورود" و نتیجه معاملات. آیا الگوهای خاصی وجود دارد؟
+
+                **۴. توصیه‌های عملی (نقشه راه شما):**
+                - ارائه ۳ توصیه مشخص، کوتاه و قابل اجرا برای بهبود. مثال: "۱. قبل از هر معامله، چک‌لیست خود را مرور کنید، حتی اگر از ستاپ مطمئن هستید. ۲. تعداد معاملات با انگیزه 'انتقام' را به صفر برسانید. بعد از هر ضرر، حداقل ۱۰ دقیقه استراحت کنید."
+                
+                لحن شما باید حرفه‌ای، سازنده و تشویق‌کننده باشد.
+
+                لیست معاملات:
+                ${formattedTrades}
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt
+            });
+            
+            setAiAnalysis(response.text);
+
+        } catch (e) {
+            console.error(e);
+            setAiError('خطا در ارتباط با سرویس هوش مصنوعی. لطفاً اتصال اینترنت و کلید API خود را بررسی کنید.');
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
@@ -284,6 +354,17 @@ const ReportsPage: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                     <AnalysisCard title="تحلیل‌گر هوشمند مربی" icon={Bot} isLoading={isAiLoading}>
+                        {aiError ? <p className="text-red-500 text-sm p-4 text-center">{aiError}</p> :
+                        aiAnalysis ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(aiAnalysis) as string }} /> :
+                        <div className="text-center flex flex-col items-center justify-center h-full">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">اجازه دهید مربی هوشمند، ژورنال شما را تحلیل کرده و بازخورد شخصی‌سازی شده برای بهبود عملکردتان ارائه دهد.</p>
+                            <button onClick={handleAiAnalysis} className="bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-600">
+                                دریافت تحلیل مربی
+                            </button>
+                        </div>
+                        }
+                    </AnalysisCard>
                     <AnalysisCard title="عملکرد بر اساس ستاپ" icon={Target} isLoading={loading}>
                         <StatTable data={performanceBySetup} />
                     </AnalysisCard>

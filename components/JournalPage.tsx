@@ -87,7 +87,7 @@ const JournalPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {entries.length > 0 ? entries.map(entry => (
-                            <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
+                            <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => handleOpenModal(entry)}>
                                 <td className="px-4 py-3 font-mono">{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
                                 <td className="px-4 py-3 font-semibold">{entry.symbol?.toUpperCase() || '-'}</td>
                                 <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : entry.side === 'Sell' ? 'text-red-500' : ''}`}>
@@ -105,23 +105,25 @@ const JournalPage: React.FC = () => {
                                  <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss == null ? '' : entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                     {entry.profitOrLoss != null ? `$${entry.profitOrLoss.toFixed(2)}` : <span className="text-blue-500">باز</span>}
                                 </td>
-                                <td className="px-4 py-3 flex items-center gap-1">
-                                    {entry.imageUrl && (
-                                        <a href={entry.imageUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="مشاهده تصویر">
-                                            <Camera size={16} />
-                                        </a>
-                                    )}
-                                    {entry.entryPrice && (
-                                        <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
-                                            <LineChart size={16} />
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                        {entry.imageUrl && (
+                                            <a href={entry.imageUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="مشاهده تصویر">
+                                                <Camera size={16} />
+                                            </a>
+                                        )}
+                                        {entry.entryPrice && (
+                                            <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
+                                                <LineChart size={16} />
+                                            </button>
+                                        )}
+                                        <button onClick={() => handleOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
+                                            <Edit2 size={16} />
                                         </button>
-                                    )}
-                                     <button onClick={() => handleOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button onClick={() => handleDelete(entry.id)} className="p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="حذف">
-                                        <Trash2 size={16} />
-                                    </button>
+                                        <button onClick={() => handleDelete(entry.id)} className="p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="حذف">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         )) : (
