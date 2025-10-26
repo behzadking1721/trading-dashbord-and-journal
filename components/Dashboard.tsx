@@ -2,7 +2,7 @@ import React, { Suspense, useState, lazy, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
-import { RefreshCw, Clock, Bell, Lock, Unlock } from 'lucide-react';
+import { RefreshCw, Clock, Bell } from 'lucide-react';
 import type { WidgetVisibility } from '../types';
 
 const AlertsManager = lazy(() => import('./AlertsManager'));
@@ -10,7 +10,6 @@ const AlertsManager = lazy(() => import('./AlertsManager'));
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
-const STORAGE_KEY_LAYOUTS = 'dashboard-layouts';
 
 const getFromLS = (key: string, defaultValue: any) => {
     if (typeof localStorage !== 'undefined') {
@@ -25,33 +24,23 @@ const getFromLS = (key: string, defaultValue: any) => {
     return defaultValue;
 };
 
-const saveToLS = (key: string, value: any) => {
-    if (typeof localStorage !== 'undefined') {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.error("Could not save to localStorage", e);
-        }
-    }
-};
-
 const defaultLayouts = {
   lg: [
-    // Top Row: KPIs
-    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
-    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
-    { i: 'risk_management', x: 6, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
-    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+    // Row 1: KPIs
+    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 6 },
+    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 6 },
+    { i: 'risk_management', x: 6, y: 0, w: 3, h: 6 },
+    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 6 },
 
-    // Main Area: Chart (left) and Tools (right)
-    { i: 'price_chart', x: 0, y: 5, w: 8, h: 14, minW: 6, minH: 10 },
-    { i: 'trading_checklist', x: 8, y: 5, w: 4, h: 7, minW: 3, minH: 6 },
-    { i: 'trades_table', x: 8, y: 12, w: 4, h: 7, minW: 4, minH: 7 },
+    // Row 2: Main Workspace
+    { i: 'price_chart', x: 0, y: 6, w: 8, h: 12 },
+    { i: 'trading_checklist', x: 8, y: 6, w: 4, h: 6 },
+    { i: 'trades_table', x: 8, y: 12, w: 4, h: 6 },
 
-    // Bottom Row: News & Insights
-    { i: 'forex_news', x: 0, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
-    { i: 'ai_summary', x: 4, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
-    { i: 'hafez_fortune', x: 8, y: 19, w: 4, h: 9, minW: 4, minH: 6 },
+    // Row 3: Info & Insights
+    { i: 'forex_news', x: 0, y: 18, w: 4, h: 8 },
+    { i: 'ai_summary', x: 4, y: 18, w: 4, h: 8 },
+    { i: 'hafez_fortune', x: 8, y: 18, w: 4, h: 8 },
   ]
 };
 
@@ -71,22 +60,18 @@ const defaultVisibleWidgets = [
 const Dashboard: React.FC = () => {
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
-    const [layouts, setLayouts] = useState(() => getFromLS(STORAGE_KEY_LAYOUTS, defaultLayouts));
-    const [isLayoutLocked, setIsLayoutLocked] = useState(true);
 
     useEffect(() => {
         const loadVisibility = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
             if (savedVisibility) {
-                // If user has settings, respect them but ensure all keys exist
                 const newVisibility: WidgetVisibility = {};
                 Object.keys(WIDGET_DEFINITIONS).forEach(key => {
                     newVisibility[key] = savedVisibility[key] !== false;
                 });
                 setWidgetVisibility(newVisibility);
             } else {
-                // No saved settings, apply the new focused default
                 const newDefaultVisibility: WidgetVisibility = {};
                 Object.keys(WIDGET_DEFINITIONS).forEach(key => {
                     newDefaultVisibility[key] = defaultVisibleWidgets.includes(key);
@@ -98,11 +83,6 @@ const Dashboard: React.FC = () => {
         window.addEventListener('storage', loadVisibility);
         return () => window.removeEventListener('storage', loadVisibility);
     }, []);
-    
-    const onLayoutChange = (_: any, newLayouts: any) => {
-        saveToLS(STORAGE_KEY_LAYOUTS, newLayouts);
-        setLayouts(newLayouts);
-    };
     
     const createWidget = (key: string) => {
         const WidgetComponent = WIDGETS[key as keyof typeof WIDGETS];
@@ -121,16 +101,13 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className={`p-4 lg:p-6 ${isLayoutLocked ? 'layout-locked' : ''}`}>
+        <div className="p-4 lg:p-6">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold">مرکز فرماندهی</h1>
-                    <p className="text-gray-500 dark:text-gray-400">خوش آمدید! چیدمان داشبورد را به دلخواه خود تغییر دهید.</p>
+                    <p className="text-gray-500 dark:text-gray-400">نمای کلی از وضعیت بازار و معاملات شما.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                     <button onClick={() => setIsLayoutLocked(!isLayoutLocked)} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title={isLayoutLocked ? "باز کردن قفل چیدمان" : "قفل کردن چیدمان"}>
-                        {isLayoutLocked ? <Lock className="w-6 h-6 text-indigo-500"/> : <Unlock className="w-6 h-6 text-indigo-500"/>}
-                    </button>
                      <button onClick={() => setIsAlertsModalOpen(true)} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="هشدارها">
                         <Bell className="w-6 h-6 text-indigo-500"/>
                     </button>
@@ -145,14 +122,12 @@ const Dashboard: React.FC = () => {
             </header>
 
             <ResponsiveGridLayout
-                layouts={layouts}
-                onLayoutChange={onLayoutChange}
+                layouts={defaultLayouts}
                 breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                 cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
                 rowHeight={30}
-                draggableHandle=".card-drag-handle"
-                isDraggable={!isLayoutLocked}
-                isResizable={!isLayoutLocked}
+                isDraggable={false}
+                isResizable={false}
                 compactType="vertical"
             >
                 {Object.keys(WIDGET_DEFINITIONS)
