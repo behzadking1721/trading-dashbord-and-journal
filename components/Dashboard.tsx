@@ -81,10 +81,12 @@ const Dashboard: React.FC = () => {
 
      const [isLayoutLocked, setIsLayoutLocked] = useState(() => {
         try {
-            return localStorage.getItem(STORAGE_KEY_LAYOUT_LOCKED) === 'true';
+            // Default to locked state if the setting is not explicitly 'false'.
+            // This makes the layout locked for new users or if the setting is cleared.
+            return localStorage.getItem(STORAGE_KEY_LAYOUT_LOCKED) !== 'false';
         } catch (error) {
             console.error("Failed to load layout lock state", error);
-            return false;
+            return true; // Default to locked on error for safety.
         }
     });
     
