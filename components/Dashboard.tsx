@@ -1,7 +1,7 @@
 import React, { Suspense, useState, lazy, useEffect, useCallback } from 'react';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
-import { RefreshCw, Clock, Bell, LayoutDashboard } from 'lucide-react';
+import { RefreshCw, Clock, Bell, LayoutDashboard, Lock, Unlock } from 'lucide-react';
 import type { WidgetVisibility } from '../types';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 
@@ -10,6 +10,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 const STORAGE_KEY_LAYOUT = 'dashboard-layout';
+const STORAGE_KEY_LAYOUT_LOCKED = 'dashboard-layout-locked';
 
 // Default layout for large screens
 const initialLayouts = {
@@ -78,6 +79,24 @@ const Dashboard: React.FC = () => {
         return initialLayouts;
     });
 
+     const [isLayoutLocked, setIsLayoutLocked] = useState(() => {
+        try {
+            return localStorage.getItem(STORAGE_KEY_LAYOUT_LOCKED) === 'true';
+        } catch (error) {
+            console.error("Failed to load layout lock state", error);
+            return false;
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEY_LAYOUT_LOCKED, String(isLayoutLocked));
+        } catch (e) {
+            console.error("Failed to save layout lock state", e);
+        }
+    }, [isLayoutLocked]);
+
+
     useEffect(() => {
         const loadVisibility = () => {
             try {
@@ -104,13 +123,14 @@ const Dashboard: React.FC = () => {
     }, []);
 
     const onLayoutChange = useCallback((layout: any, allLayouts: any) => {
+        if (isLayoutLocked) return;
         try {
             localStorage.setItem(STORAGE_KEY_LAYOUT, JSON.stringify(allLayouts));
             setLayouts(allLayouts);
         } catch (error) {
             console.error("Failed to save layout", error);
         }
-    }, []);
+    }, [isLayoutLocked]);
 
     const resetLayout = useCallback(() => {
         if(window.confirm("آیا از بازنشانی چیدمان داشبورد به حالت اولیه مطمئن هستید؟")) {
@@ -123,6 +143,8 @@ const Dashboard: React.FC = () => {
         }
     }, []);
 
+    const toggleLockLayout = useCallback(() => setIsLayoutLocked(prev => !prev), []);
+
     return (
         <div className="p-4 lg:p-6">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -131,6 +153,9 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 dark:text-gray-400">خوش آمدید! این نمای کلی از وضعیت معاملاتی شماست.</p>
                 </div>
                 <div className="flex items-center gap-4">
+                     <button onClick={toggleLockLayout} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title={isLayoutLocked ? 'باز کردن قفل چیدمان' : 'قفل کردن چیدمان'}>
+                        {isLayoutLocked ? <Lock className="w-6 h-6 text-red-500"/> : <Unlock className="w-6 h-6 text-green-500"/>}
+                    </button>
                      <button onClick={resetLayout} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="بازنشانی چیدمان">
                         <LayoutDashboard className="w-6 h-6 text-indigo-500"/>
                     </button>
@@ -155,8 +180,10 @@ const Dashboard: React.FC = () => {
                 rowHeight={30}
                 margin={[24, 24]}
                 draggableHandle=".card-drag-handle"
-                isDraggable={true}
-                isResizable={true}
+                compactType="vertical"
+                isDraggable={!isLayoutLocked}
+                isResizable={!isLayoutLocked}
+                className={isLayoutLocked ? 'layout-locked' : ''}
             >
                 {generateWidgetDOM(widgetVisibility)}
             </ResponsiveGridLayout>
