@@ -38,23 +38,23 @@ const saveToLS = (key: string, value: any) => {
 const defaultLayouts = {
   lg: [
     // Top row of KPIs
-    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 5, minW: 3, minH: 4 },
-    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 5, minW: 3, minH: 4 },
-    { i: 'risk_management', x: 6, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
-    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 5, minW: 3, minH: 5 },
+    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 6, minW: 3, minH: 5 },
+    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 6, minW: 3, minH: 5 },
+    { i: 'risk_management', x: 6, y: 0, w: 3, h: 6, minW: 3, minH: 6 },
+    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 6, minW: 3, minH: 6 },
     
     // Main content area: chart and checklist
-    { i: 'price_chart', x: 0, y: 5, w: 8, h: 12, minW: 6, minH: 8 },
-    { i: 'trading_checklist', x: 8, y: 5, w: 4, h: 12, minW: 3, minH: 8 },
+    { i: 'price_chart', x: 0, y: 6, w: 8, h: 15, minW: 6, minH: 10 },
+    { i: 'trading_checklist', x: 8, y: 6, w: 4, h: 15, minW: 3, minH: 10 },
 
     // Mid section: trades and news
-    { i: 'trades_table', x: 0, y: 17, w: 8, h: 8, minW: 6, minH: 6 },
-    { i: 'forex_news', x: 8, y: 17, w: 4, h: 8, minW: 3, minH: 7 },
+    { i: 'trades_table', x: 0, y: 21, w: 8, h: 9, minW: 6, minH: 7 },
+    { i: 'forex_news', x: 8, y: 21, w: 4, h: 9, minW: 3, minH: 8 },
 
     // Bottom row of widgets
-    { i: 'ai_summary', x: 0, y: 25, w: 4, h: 8, minW: 3, minH: 6 },
-    { i: 'weather', x: 4, y: 25, w: 4, h: 8, minW: 4, minH: 8 },
-    { i: 'hafez_fortune', x: 8, y: 25, w: 4, h: 8, minW: 3, minH: 6 },
+    { i: 'ai_summary', x: 0, y: 30, w: 4, h: 9, minW: 3, minH: 7 },
+    { i: 'weather', x: 4, y: 30, w: 4, h: 9, minW: 4, minH: 8 },
+    { i: 'hafez_fortune', x: 8, y: 30, w: 4, h: 9, minW: 3, minH: 7 },
   ]
 };
 
