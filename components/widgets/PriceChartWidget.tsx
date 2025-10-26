@@ -46,14 +46,14 @@ const PriceChartWidget: React.FC = () => {
         if (!chartContainerRef.current) return;
 
         const handleResize = () => {
-            if (chartRef.current) {
-                chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+            if (chartRef.current && chartContainerRef.current) {
+                chartRef.current.resize(chartContainerRef.current.clientWidth, chartContainerRef.current.clientHeight);
             }
         };
 
         chartRef.current = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
-            height: 300,
+            height: chartContainerRef.current.clientHeight, // Use container's height for responsiveness
             layout: {
                 background: { color: 'transparent' },
                 textColor: theme === 'light' ? '#1f2937' : '#d1d5db',
@@ -85,9 +85,11 @@ const PriceChartWidget: React.FC = () => {
         seriesRef.current.setData(chartData);
         chartRef.current.timeScale().fitContent();
 
-        window.addEventListener('resize', handleResize);
+        const resizeObserver = new ResizeObserver(handleResize);
+        resizeObserver.observe(chartContainerRef.current);
+
         return () => {
-            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
             chartRef.current?.remove();
         };
     }, []);
