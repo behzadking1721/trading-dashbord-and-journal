@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, X, Edit3, RefreshCw } from 'lucide-react';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, X, Edit3, RefreshCw, ChevronDown } from 'lucide-react';
 import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField } from '../types';
 import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../constants';
 import { getJournalEntries, addJournalEntry } from '../db';
@@ -29,6 +29,45 @@ const setNestedValue = (obj: any, path: string, value: any) => {
         current = current[keys[i]];
     }
     current[keys[keys.length - 1]] = value;
+};
+
+const AntiMartingaleVisualizer: React.FC<{
+    baseRisk: number;
+    increment: number;
+    maxRisk: number;
+    winStreak: number;
+}> = ({ baseRisk, increment, maxRisk, winStreak }) => {
+    const steps = [];
+    let currentRisk = baseRisk;
+    let i = 0;
+    // Ensure at least the base risk is shown
+    if (baseRisk > 0 && increment > 0 && maxRisk > 0) {
+        while (true) {
+            steps.push({ win: i, risk: currentRisk });
+            if (currentRisk >= maxRisk || steps.length > 10) break;
+            currentRisk = Math.min(baseRisk + (i + 1) * increment, maxRisk);
+            i++;
+        }
+    }
+
+    if (steps.length === 0) return null;
+
+    return (
+        <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mb-2 font-semibold">نحوه افزایش ریسک:</p>
+            <div className="flex flex-wrap gap-2 items-start">
+                {steps.map((step) => {
+                    const isActive = winStreak === step.win;
+                    return (
+                        <div key={step.win} className={`p-1.5 rounded-md text-center border transition-colors ${isActive ? 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-500' : 'bg-gray-100 dark:bg-gray-700/50 border-transparent'}`}>
+                            <p className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">{step.risk.toFixed(1)}%</p>
+                            <p className="text-[10px] mt-0.5">{step.win === 0 ? 'ریسک پایه' : `${step.win} برد`}</p>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 };
 
 
@@ -151,8 +190,10 @@ const SettingsPage: React.FC = () => {
                     <div className="space-y-4">
                         <div><label className="block text-sm font-medium mb-1">موجودی حساب ($)</label><input type="number" value={riskSettings.accountBalance} onChange={e => handleRiskSettingsChange('accountBalance', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" /></div>
                         <div><label className="block text-sm font-medium mb-1">استراتژی مدیریت حجم</label><select value={riskSettings.strategy} onChange={e => handleRiskSettingsChange('strategy', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="fixed_percent">درصد ثابت</option><option value="anti_martingale">افزایشی (ضد مارتینگل)</option></select></div>
-                        {riskSettings.strategy === 'fixed_percent' && (<div><label className="block text-sm font-medium mb-1">درصد ریسک در هر معامله (%)</label><input type="number" step="0.1" value={riskSettings.fixedPercent.risk} onChange={e => handleRiskSettingsChange('fixedPercent.risk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" /><div className="p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm"><p>مبلغ قابل ریسک برای هر معامله: <strong className="font-mono text-indigo-500">${riskAmount.toFixed(2)}</strong></p></div></div>)}
-                        {riskSettings.strategy === 'anti_martingale' && (<div className="space-y-3 p-3 border rounded-md dark:border-gray-600"><h4 className="text-xs font-semibold">تنظیمات استراتژی افزایشی</h4><div><label className="block text-xs font-medium mb-1">درصد ریسک پایه (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.baseRisk} onChange={e => handleRiskSettingsChange('antiMartingale.baseRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">افزایش ریسک بعد از هر برد (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.increment} onChange={e => handleRiskSettingsChange('antiMartingale.increment', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">حداکثر درصد ریسک (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.maxRisk} onChange={e => handleRiskSettingsChange('antiMartingale.maxRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div className="p-3 border rounded-md dark:border-gray-500 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm space-y-1"><p>رشته پیروزی‌های متوالی فعلی: <span className="font-bold">{winStreak}</span></p><p>درصد ریسک موثر برای معامله بعدی: <strong className="font-mono text-indigo-500">{effectiveRiskPercent.toFixed(2)}%</strong></p><p>مبلغ قابل ریسک: <strong className="font-mono text-indigo-500">${effectiveRiskAmount.toFixed(2)}</strong></p></div></div>)}
+                        {riskSettings.strategy === 'fixed_percent' && (<div><label className="block text-sm font-medium mb-1">درصد ریسک در هر معامله (%)</label><input type="number" step="0.1" value={riskSettings.fixedPercent.risk} onChange={e => handleRiskSettingsChange('fixedPercent.risk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" /><div className="p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm"><p>در معامله بعدی، شما <strong className="font-mono text-indigo-500">${riskAmount.toFixed(2)}</strong> ({riskSettings.fixedPercent.risk}%) ریسک خواهید کرد.</p></div></div>)}
+                        {riskSettings.strategy === 'anti_martingale' && (<div className="space-y-3 p-3 border rounded-md dark:border-gray-600"><h4 className="text-xs font-semibold">تنظیمات استراتژی افزایشی</h4><div><label className="block text-xs font-medium mb-1">درصد ریسک پایه (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.baseRisk} onChange={e => handleRiskSettingsChange('antiMartingale.baseRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">افزایش ریسک بعد از هر برد (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.increment} onChange={e => handleRiskSettingsChange('antiMartingale.increment', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">حداکثر درصد ریسک (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.maxRisk} onChange={e => handleRiskSettingsChange('antiMartingale.maxRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div>
+                        <AntiMartingaleVisualizer {...riskSettings.antiMartingale} winStreak={winStreak} />
+                        <div className="p-3 border rounded-md dark:border-gray-500 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm space-y-1"><p>رشته پیروزی‌های متوالی فعلی: <span className="font-bold">{winStreak}</span></p><p>در معامله بعدی، شما <strong className="font-mono text-indigo-500">${effectiveRiskAmount.toFixed(2)}</strong> ({effectiveRiskPercent.toFixed(2)}%) ریسک خواهید کرد.</p><p className="text-xs text-gray-500 pt-1 border-t border-gray-200 dark:border-gray-600 mt-1">رشته پیروزی از آخرین معاملات بسته‌شده محاسبه می‌شود و پس از اولین ضرر، صفر خواهد شد.</p></div></div>)}
                     </div>
                     <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4"><button onClick={handleSaveRisk} className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors"><Save size={18} /><span>ذخیره تنظیمات ریسک</span></button></div>
                  </SettingsSection>
@@ -248,8 +289,34 @@ const SetupFormModal: React.FC<{setup: TradingSetup, onSave: (setup: TradingSetu
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
                     <input type="text" placeholder="نام ستاپ" required value={currentSetup.name} onChange={e => setCurrentSetup({...currentSetup, name: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
                     <textarea placeholder="توضیحات" value={currentSetup.description} onChange={e => setCurrentSetup({...currentSetup, description: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" rows={2}></textarea>
-                    <div><h3 className="text-md font-semibold mb-2">مقادیر پیش‌فرض (اختیاری)</h3><div className="p-4 border rounded-md dark:border-gray-600 space-y-4"><input type="number" step="0.1" placeholder="نسبت ریسک به ریوارد پیش‌فرض" value={currentSetup.defaultRiskRewardRatio === undefined ? '' : currentSetup.defaultRiskRewardRatio} onChange={e => setCurrentSetup({...currentSetup, defaultRiskRewardRatio: e.target.value ? parseFloat(e.target.value) : undefined})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /><div><label className="block text-sm font-medium mb-1">تگ‌های پیش‌فرض</label><div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">{currentSetup.defaultTags?.map(tag => (<div key={tag} className="flex items-center gap-1 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">{tag}<button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button></div>))}<input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())} placeholder="افزودن تگ..." className="bg-transparent focus:outline-none flex-grow" /></div></div><div><label className="block text-sm font-medium mb-1">اشتباهات رایج پیش‌فرض</label><div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('defaultMistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${currentSetup.defaultMistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div></div></div></div>
-                    <div><h3 className="text-md font-semibold mb-2">چک‌لیست</h3><div className="space-y-2 max-h-48 overflow-y-auto pr-2">{currentSetup.checklist.map(item => (<div key={item.id} className="flex items-center justify-between text-sm bg-gray-100 dark:bg-gray-700/50 p-2 rounded"><span>{item.text}</span><button type="button" onClick={() => handleDeleteItem(item.id)} className="p-1 text-red-500 opacity-50 hover:opacity-100"><Trash2 size={14} /></button></div>))}<div className="flex gap-2 mt-2"><input type="text" value={newItemText} onChange={e => setNewItemText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddItem())} placeholder="آیتم جدید چک‌لیست" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /><button type="button" onClick={handleAddItem} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">افزودن</button></div></div></div>
+                    
+                    <details className="border rounded-md dark:border-gray-600">
+                        <summary className="p-4 cursor-pointer font-semibold text-md list-none">
+                            مقادیر پیش‌فرض (اختیاری)
+                        </summary>
+                        <div className="p-4 border-t dark:border-gray-600 space-y-4">
+                            <input type="number" step="0.1" placeholder="نسبت ریسک به ریوارد پیش‌فرض" value={currentSetup.defaultRiskRewardRatio === undefined ? '' : currentSetup.defaultRiskRewardRatio} onChange={e => setCurrentSetup({...currentSetup, defaultRiskRewardRatio: e.target.value ? parseFloat(e.target.value) : undefined})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                            <div>
+                                <label className="block text-sm font-medium mb-1">تگ‌های پیش‌فرض</label>
+                                <div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">{currentSetup.defaultTags?.map(tag => (<div key={tag} className="flex items-center gap-1 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">{tag}<button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button></div>))}<input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())} placeholder="افزودن تگ..." className="bg-transparent focus:outline-none flex-grow" /></div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">اشتباهات رایج پیش‌فرض</label>
+                                <div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('defaultMistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${currentSetup.defaultMistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details className="border rounded-md dark:border-gray-600">
+                        <summary className="p-4 cursor-pointer font-semibold text-md list-none">
+                           چک‌لیست
+                        </summary>
+                         <div className="p-4 border-t dark:border-gray-600 space-y-3">
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2">{currentSetup.checklist.map(item => (<div key={item.id} className="flex items-center justify-between text-sm bg-gray-100 dark:bg-gray-700/50 p-2 rounded"><span>{item.text}</span><button type="button" onClick={() => handleDeleteItem(item.id)} className="p-1 text-red-500 opacity-50 hover:opacity-100"><Trash2 size={14} /></button></div>))}</div>
+                            <div className="flex gap-2"><input type="text" value={newItemText} onChange={e => setNewItemText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddItem())} placeholder="آیتم جدید چک‌لیست" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /><button type="button" onClick={handleAddItem} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">افزودن</button></div>
+                        </div>
+                    </details>
+
                     <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700 mt-auto"><button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">انصراف</button><button type="submit" className="px-4 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600">ذخیره ستاپ</button></div>
                  </form>
             </div>
