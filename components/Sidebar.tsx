@@ -29,8 +29,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
 
   return (
-    <aside className="w-64 min-h-screen bg-white/30 dark:bg-gray-800/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-gray-700/50 flex flex-col p-4 shadow-2xl">
-      <div className="flex items-center gap-3 mb-10 px-2">
+    <aside className="w-80 min-h-screen bg-white/30 dark:bg-slate-900/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-slate-700/50 flex flex-col p-8 shadow-2xl">
+      <div className="flex items-center gap-3 mb-12 px-2">
         <LayoutPanelLeft className="w-8 h-8 text-indigo-500" />
         <h1 className="text-xl font-bold text-gray-800 dark:text-white">ترید ژورنال</h1>
       </div>
@@ -40,10 +40,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
             <li key={item.href}>
               <a
                 href={`#${item.href}`}
-                className={`flex items-center gap-4 p-3 my-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-4 p-4 my-2 rounded-2xl text-sm font-medium transition-colors ${
                   currentPage === item.href
                     ? 'bg-indigo-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700/50'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
       <div className="mt-auto">
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center justify-center gap-4 p-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          className="w-full flex items-center justify-center gap-4 p-4 rounded-2xl hover:bg-gray-200 dark:hover:bg-slate-700/50 transition-colors"
           title="تغییر تم"
         >
           <ThemeIcon theme={theme} />
