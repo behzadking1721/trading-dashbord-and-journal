@@ -1,14 +1,14 @@
 import React from 'react';
 import { lazy } from 'react';
 import {
-    LineChart, Flame, Globe, History, ShieldAlert,
+    LineChart, Newspaper, Globe, History, ShieldAlert,
     TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen
 } from 'lucide-react';
 import type { JournalFormField } from './types';
 
 export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
   price_chart: lazy(() => import('./components/widgets/PriceChartWidget')),
-  forex_news: lazy(() => import('./components/widgets/ForexNewsWidget')),
+  news_feed: lazy(() => import('./components/widgets/NewsFeedWidget')),
   sessions_clock: lazy(() => import('./components/widgets/SessionsClockWidget')),
   trades_table: lazy(() => import('./components/widgets/TradesTableWidget')),
   risk_management: lazy(() => import('./components/widgets/RiskManagementWidget')),
@@ -22,7 +22,7 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
   price_chart: { title: 'نمودار قیمت', icon: LineChart, description: 'نمودار تعاملی قیمت برای تحلیل تکنیکال.' },
-  forex_news: { title: 'اخبار لحظه‌ای فارکس', icon: Flame, description: 'نمایش اخبار و رویدادهای مهم اقتصادی.' },
+  news_feed: { title: 'فید اخبار', icon: Newspaper, description: 'آخرین اخبار بازارهای مالی فارکس، کریپتو، بورس جهانی و ایران.' },
   sessions_clock: { title: 'سشن‌های معاملاتی', icon: Globe, description: 'وضعیت بازارهای جهانی و ساعت سشن‌ها.' },
   trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورنال.' },
   risk_management: { title: 'مدیریت ریسک', icon: ShieldAlert, description: 'تحلیل ریسک فعال و توزیع نمادها.' },

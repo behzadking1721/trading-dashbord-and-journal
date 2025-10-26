@@ -45,7 +45,7 @@ const defaultLayouts = {
     { i: 'trades_table', x: 0, y: 12, w: 8, h: 7, minW: 6, minH: 6 },
     { i: 'ai_summary', x: 8, y: 3, w: 4, h: 7, minW: 3, minH: 6 },
     { i: 'sessions_clock', x: 8, y: 10, w: 4, h: 6, minW: 3, minH: 5 },
-    { i: 'forex_news', x: 8, y: 16, w: 4, h: 8, minW: 3, minH: 7 },
+    { i: 'news_feed', x: 8, y: 16, w: 4, h: 8, minW: 3, minH: 7 },
     { i: 'weather', x: 0, y: 19, w: 6, h: 7, minW: 4, minH: 6 },
     { i: 'hafez_fortune', x: 6, y: 19, w: 6, h: 5, minW: 4, minH: 4 },
   ]
