@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, X, Edit3 } from 'lucide-react';
-import type { TradingSetup, WidgetVisibility, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField } from '../types';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, X, Edit3, Newspaper, BarChart3, Calendar } from 'lucide-react';
+import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField, CalendarPageVisibility } from '../types';
 import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../constants';
+import { getJournalEntries, addJournalEntry } from '../db';
+
 
 const STORAGE_KEY_SETUPS = 'trading-setups';
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 const STORAGE_KEY_NOTIFICATION_SETTINGS = 'notification-settings';
 const STORAGE_KEY_RISK_SETTINGS = 'risk-management-settings';
 const STORAGE_KEY_FORM_SETTINGS = 'journal-form-settings';
+const STORAGE_KEY_CALENDAR_PAGE_VISIBILITY = 'calendar-page-visibility';
 const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
 const EMOTIONS_BEFORE = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
 const ENTRY_REASONS = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
@@ -39,6 +42,9 @@ const SettingsPage: React.FC = () => {
     const [setups, setSetups] = useState<TradingSetup[]>([]);
     const [editingSetup, setEditingSetup] = useState<TradingSetup | null>(null);
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
+    const [calendarPageVisibility, setCalendarPageVisibility] = useState<CalendarPageVisibility>({
+        calendar: true, newsFeed: true, livePrices: true
+    });
     const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
         globalEnable: true, priceAlerts: true, newsAlerts: true, cryptoNewsAlerts: true, stockNewsAlerts: true,
     });
@@ -65,6 +71,9 @@ const SettingsPage: React.FC = () => {
             const initialVisibility: WidgetVisibility = savedVisibility ? JSON.parse(savedVisibility) : {};
             Object.keys(WIDGET_DEFINITIONS).forEach(key => { if (initialVisibility[key] === undefined) initialVisibility[key] = true; });
             setWidgetVisibility(initialVisibility);
+            // Load calendar page visibility
+            const savedCalendarVisibility = localStorage.getItem(STORAGE_KEY_CALENDAR_PAGE_VISIBILITY);
+            if(savedCalendarVisibility) setCalendarPageVisibility(JSON.parse(savedCalendarVisibility));
             // Load notification settings
             const savedNotificationSettings = localStorage.getItem(STORAGE_KEY_NOTIFICATION_SETTINGS);
             if (savedNotificationSettings) setNotificationSettings(JSON.parse(savedNotificationSettings));
@@ -84,6 +93,7 @@ const SettingsPage: React.FC = () => {
     const handleDeleteSetup = (id: string) => { if (window.confirm('آیا از حذف این ستاپ مطمئن هستید؟')) saveSetups(setups.filter(s => s.id !== id)); };
     const handleSetActive = (id: string) => { saveSetups(setups.map(s => ({ ...s, isActive: s.id === id }))); };
     const handleVisibilityChange = (widgetKey: string, isVisible: boolean) => { const newVisibility = { ...widgetVisibility, [widgetKey]: isVisible }; setWidgetVisibility(newVisibility); try { localStorage.setItem(STORAGE_KEY_WIDGET_VISIBILITY, JSON.stringify(newVisibility)); window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY_WIDGET_VISIBILITY })); } catch (error) { console.error("Failed to save widget visibility", error); }};
+    const handleCalendarVisibilityChange = (key: keyof CalendarPageVisibility, isVisible: boolean) => { const newVisibility = { ...calendarPageVisibility, [key]: isVisible }; setCalendarPageVisibility(newVisibility); try { localStorage.setItem(STORAGE_KEY_CALENDAR_PAGE_VISIBILITY, JSON.stringify(newVisibility)); window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY_CALENDAR_PAGE_VISIBILITY })); } catch (error) { console.error("Failed to save calendar visibility", error); }};
     const handleNotificationSettingChange = (key: keyof NotificationSettings, value: boolean) => { const newSettings = { ...notificationSettings, [key]: value }; if (key === 'globalEnable' && !value) { Object.keys(newSettings).forEach(k => { if(k !== 'globalEnable') newSettings[k as keyof NotificationSettings] = false; }); } setNotificationSettings(newSettings); try { localStorage.setItem(STORAGE_KEY_NOTIFICATION_SETTINGS, JSON.stringify(newSettings)); } catch (error) { console.error("Failed to save notification settings", error); }};
     const handleFormSettingChange = (fieldId: JournalFormField, property: keyof FormFieldSetting, value: any) => { const newSettings = { ...formSettings, [fieldId]: { ...formSettings[fieldId], [property]: value } }; setFormSettings(newSettings); try { localStorage.setItem(STORAGE_KEY_FORM_SETTINGS, JSON.stringify(newSettings)); } catch (error) { console.error("Failed to save form settings", error); }};
     const handleExport = async () => {}; const handleImportClick = () => {}; const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {};
@@ -109,7 +119,17 @@ const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 <div className="space-y-6">
-                     <SettingsSection title="تنظیمات فرم ثبت معامله" icon={Edit3}>
+                     <SettingsSection title="شخصی‌سازی هاب خبری" icon={Calendar}>
+                        <div className="space-y-3">
+                            {[ {key: 'calendar', label: 'ویجت تقویم اقتصادی', icon: Calendar}, {key: 'newsFeed', label: 'ویجت فید اخبار', icon: Newspaper}, {key: 'livePrices', label: 'ویجت قیمت‌های زنده', icon: BarChart3}].map(item => (
+                               <div key={item.key} className="flex items-center justify-between">
+                                   <p className="font-semibold text-sm flex items-center gap-2"><item.icon size={16} /> {item.label}</p>
+                                   <ToggleSwitch checked={calendarPageVisibility[item.key as keyof CalendarPageVisibility]} onChange={c => handleCalendarVisibilityChange(item.key as keyof CalendarPageVisibility, c)} />
+                               </div>
+                            ))}
+                        </div>
+                    </SettingsSection>
+                    <SettingsSection title="تنظیمات فرم ثبت معامله" icon={Edit3}>
                         <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                            {JOURNAL_FORM_FIELDS.map((field) => (
                                <div key={field.id} className="grid grid-cols-[1fr_120px_50px] items-center gap-4">

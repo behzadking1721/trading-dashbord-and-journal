@@ -1,62 +1,50 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl" class="scroll-smooth">
+<html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="داشبورد معاملاتی پیشرفته برای تحلیل بازارهای مالی">
-    <meta name="keywords" content="معاملات, بورس, تحلیل تکنیکال, داشبورد">
-    <title>داشبورد معاملاتی | تحلیل بازارهای مالی</title>
-    
-    <!-- Tailwind CSS -->
+    <title>داشبورد معاملاتی</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <!-- React Grid Layout Styles -->
     <link rel="stylesheet" href="https://aistudiocdn.com/react-grid-layout@^1.4.4/css/styles.css" />
     <link rel="stylesheet" href="https://aistudiocdn.com/react-resizable@^3.0.5/css/styles.css" />
-    
     <style>
       body {
-        font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+        font-family: 'Vazirmatn', sans-serif;
         direction: rtl;
       }
-      
       .glass .glass-card {
         background-color: rgba(255, 255, 255, 0.3);
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         border: 1px solid rgba(255, 255, 255, 0.2);
       }
-      
       .dark .glass .glass-card {
-        background-color: rgba(30, 41, 59, 0.5);
+        background-color: rgba(30, 41, 59, 0.5); /* slate-800 with opacity */
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-      
       .prose {
         color: inherit;
       }
-      
       .prose h1, .prose h2, .prose h3, .prose h4, .prose strong {
         color: inherit;
       }
 
       /* React Grid Layout Overrides */
       .react-grid-item.react-grid-placeholder {
-        background: rgba(79, 70, 229, 0.4);
-        border-radius: 0.75rem;
+        background: rgba(79, 70, 229, 0.4); /* indigo-500 with opacity */
+        border-radius: 0.75rem; /* rounded-xl */
         opacity: 0.4;
         transition-duration: 100ms;
         z-index: 2;
       }
-      
+      /* RTL support for resizer handle */
       .react-grid-item > .react-resizable-handle {
         position: absolute;
         width: 20px;
@@ -65,7 +53,6 @@
         left: 0;
         cursor: se-resize;
       }
-      
       .react-grid-item > .react-resizable-handle::after {
         content: "";
         position: absolute;
@@ -76,120 +63,61 @@
         border-right: 2px solid rgba(0, 0, 0, 0.4);
         border-bottom: 2px solid rgba(0, 0, 0, 0.4);
       }
-      
       .dark .react-grid-item > .react-resizable-handle::after {
         border-right: 2px solid rgba(255, 255, 255, 0.4);
         border-bottom: 2px solid rgba(255, 255, 255, 0.4);
       }
-      
+      /* New styles for locked layout */
       .layout-locked .react-resizable-handle {
         display: none;
       }
-      
       .layout-locked .card-drag-handle {
         cursor: default !important;
       }
-      
-      /* Custom scrollbar for better UX */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      
-      ::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.1);
-      }
-      
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 3px;
-      }
-      
-      .dark ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
-      }
-      
-      .dark ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.3);
-      }
     </style>
-    
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              slate: {
-                50: '#f8fafc',
-                100: '#f1f5f9',
-                200: '#e2e8f0',
-                300: '#cbd5e1',
-                400: '#94a3b8',
-                500: '#64748b',
-                600: '#475569',
-                700: '#334155',
-                800: '#1e293b',
-                900: '#0f172a',
-                950: '#020617',
-              }
-            },
-            fontFamily: {
-              'vazir': ['Vazirmatn', 'Segoe UI', 'Tahoma', 'sans-serif']
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+       theme: {
+        extend: {
+          colors: {
+            slate: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
             }
           }
         }
-      }
-    </script>
-    
-    <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://aistudiocdn.com/@google/genai/dist/index.js",
-        "lucide-react": "https://aistudiocdn.com/lucide-react@^0.546.0",
-        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-        "idb": "https://aistudiocdn.com/idb@^8.0.3",
-        "react/": "https://aistudiocdn.com/react@^19.2.0/",
-        "react": "https://aistudiocdn.com/react@^19.2.0",
-        "lightweight-charts": "https://aistudiocdn.com/lightweight-charts@^4.1.6",
-        "marked": "https://aistudiocdn.com/marked@^14.0.0/lib/marked.esm.js",
-        "react-grid-layout": "https://aistudiocdn.com/react-grid-layout@^1.4.4",
-        "react-resizable": "https://aistudiocdn.com/react-resizable@^3.0.5"
       }
     }
-    </script>
-  </head>
-  
-  <body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+  </script>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai/dist/index.js",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.546.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "idb": "https://aistudiocdn.com/idb@^8.0.3",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "lightweight-charts": "https://aistudiocdn.com/lightweight-charts@^4.1.6",
+    "marked": "https://aistudiocdn.com/marked@^14.0.0/lib/marked.esm.js",
+    "react-grid-layout": "https://aistudiocdn.com/react-grid-layout@^1.4.4",
+    "react-resizable": "https://aistudiocdn.com/react-resizable@^3.0.5"
+  }
+}
+</script>
+</head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    
-    <!-- Loading state -->
-    <div id="loading" class="fixed inset-0 bg-slate-50 dark:bg-slate-900 flex items-center justify-center z-50">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p class="mt-4 text-slate-600 dark:text-slate-400">در حال بارگذاری داشبورد...</p>
-      </div>
-    </div>
-    
-    <script>
-      // Hide loading when app is ready
-      const rootEl = document.getElementById('root');
-      const observer = new MutationObserver((mutationsList, observer) => {
-        for(const mutation of mutationsList) {
-          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            const loading = document.getElementById('loading');
-            if (loading) {
-              loading.style.opacity = '0';
-              setTimeout(() => { loading.style.display = 'none'; }, 300);
-            }
-            observer.disconnect();
-            return;
-          }
-        }
-      });
-      if (rootEl) {
-        observer.observe(rootEl, { childList: true });
-      }
-    </script>
   </body>
 </html>

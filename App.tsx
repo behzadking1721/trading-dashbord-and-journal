@@ -160,7 +160,7 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={themeContextValue}>
       <NotificationProvider>
-          <div className={`flex h-screen overflow-hidden transition-colors duration-300 text-gray-800 dark:text-gray-200`}>
+          <div className={`flex h-screen overflow-hidden transition-colors duration-300 bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200`}>
               <AppContent />
           </div>
       </NotificationProvider>
