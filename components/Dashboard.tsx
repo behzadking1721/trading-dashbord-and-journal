@@ -26,21 +26,23 @@ const getFromLS = (key: string, defaultValue: any) => {
 
 const defaultLayouts = {
   lg: [
-    // Row 1: KPIs
-    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 6 },
-    { i: 'wallet_overview', x: 3, y: 0, w: 3, h: 6 },
-    { i: 'risk_management', x: 6, y: 0, w: 3, h: 6 },
-    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 6 },
+    // Right Column (KPIs) - RTL: x=0 is the right-most
+    { i: 'performance_analytics', x: 0, y: 0, w: 3, h: 7 },
+    { i: 'wallet_overview', x: 0, y: 7, w: 3, h: 7 },
+    { i: 'risk_management', x: 0, y: 14, w: 3, h: 8 },
+    
+    // Center Column (Main Workspace)
+    { i: 'price_chart', x: 3, y: 0, w: 6, h: 14 },
+    { i: 'trades_table', x: 3, y: 14, w: 6, h: 8 },
 
-    // Row 2: Main Workspace
-    { i: 'price_chart', x: 0, y: 6, w: 8, h: 12 },
-    { i: 'trading_checklist', x: 8, y: 6, w: 4, h: 6 },
-    { i: 'trades_table', x: 8, y: 12, w: 4, h: 6 },
-
-    // Row 3: Info & Insights
-    { i: 'forex_news', x: 0, y: 18, w: 4, h: 8 },
-    { i: 'ai_summary', x: 4, y: 18, w: 4, h: 8 },
-    { i: 'hafez_fortune', x: 8, y: 18, w: 4, h: 8 },
+    // Left Column (Tools & Context)
+    { i: 'sessions_clock', x: 9, y: 0, w: 3, h: 7 },
+    { i: 'trading_checklist', x: 9, y: 7, w: 3, h: 7 },
+    { i: 'forex_news', x: 9, y: 14, w: 3, h: 8 },
+    
+    // Bottom Row (Insights)
+    { i: 'ai_summary', x: 0, y: 22, w: 6, h: 8 },
+    { i: 'hafez_fortune', x: 6, y: 22, w: 6, h: 8 },
   ]
 };
 
