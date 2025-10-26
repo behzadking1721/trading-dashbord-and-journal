@@ -174,13 +174,6 @@ export interface FinancialCalendarSettings {
     // notification settings can be added later
 }
 
-// Deprecated
-export interface CalendarPageVisibility {
-    calendar: boolean;
-    newsFeed: boolean;
-    livePrices: boolean;
-}
-
 // --- News Types ---
 export interface CryptoNews {
     id: string;
