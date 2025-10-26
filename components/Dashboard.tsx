@@ -1,7 +1,7 @@
 import React, { Suspense, useState, lazy, useEffect, useCallback } from 'react';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
-import { RefreshCw, Clock, Bell, LayoutDashboard, Lock, Unlock } from 'lucide-react';
+import { RefreshCw, Clock, Bell, LayoutDashboard, Lock, Unlock, Wand2 } from 'lucide-react';
 import type { WidgetVisibility } from '../types';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 
@@ -87,6 +87,8 @@ const Dashboard: React.FC = () => {
             return false;
         }
     });
+    
+    const [breakpoint, setBreakpoint] = useState('lg');
 
     useEffect(() => {
         try {
@@ -142,6 +144,24 @@ const Dashboard: React.FC = () => {
             }
         }
     }, []);
+    
+    const autoArrangeLayout = useCallback(() => {
+        setLayouts(prevLayouts => {
+            const currentBreakpointLayout = prevLayouts[breakpoint as keyof typeof prevLayouts];
+            if (!currentBreakpointLayout) return prevLayouts;
+
+            // Remove position to let RGL auto-place them compactly
+            const newLayout = currentBreakpointLayout.map((l: any) => {
+                const { x, y, ...rest } = l;
+                return rest;
+            });
+
+            return {
+                ...prevLayouts,
+                [breakpoint]: newLayout
+            };
+        });
+    }, [breakpoint]);
 
     const toggleLockLayout = useCallback(() => setIsLayoutLocked(prev => !prev), []);
 
@@ -155,6 +175,9 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-4">
                      <button onClick={toggleLockLayout} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title={isLayoutLocked ? 'باز کردن قفل چیدمان' : 'قفل کردن چیدمان'}>
                         {isLayoutLocked ? <Lock className="w-6 h-6 text-red-500"/> : <Unlock className="w-6 h-6 text-green-500"/>}
+                    </button>
+                     <button onClick={autoArrangeLayout} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="چینش خودکار">
+                        <Wand2 className="w-6 h-6 text-indigo-500"/>
                     </button>
                      <button onClick={resetLayout} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="بازنشانی چیدمان">
                         <LayoutDashboard className="w-6 h-6 text-indigo-500"/>
@@ -175,6 +198,7 @@ const Dashboard: React.FC = () => {
             <ResponsiveGridLayout
                 layouts={layouts}
                 onLayoutChange={onLayoutChange}
+                onBreakpointChange={setBreakpoint}
                 breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                 cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
                 rowHeight={30}
