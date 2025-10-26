@@ -40,6 +40,7 @@ const SettingsPage: React.FC = () => {
         fixedPercent: { risk: 1 },
         antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }
     });
+    const [winStreak, setWinStreak] = useState(0);
     const [setups, setSetups] = useState<TradingSetup[]>([]);
     const [editingSetup, setEditingSetup] = useState<TradingSetup | null>(null);
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
@@ -75,6 +76,36 @@ const SettingsPage: React.FC = () => {
             JOURNAL_FORM_FIELDS.forEach(field => { if (initialFormSettings[field.id] === undefined) initialFormSettings[field.id] = { isActive: true, defaultValue: undefined }; });
             setFormSettings(initialFormSettings);
         } catch (error) { console.error("Could not access localStorage to get settings:", error); }
+        
+        // Calculate win streak for anti-martingale
+        const calculateWinStreak = async () => {
+            try {
+                const entries = await getJournalEntries();
+                const closedTrades = entries
+                    .filter(e => e.status === 'Win' || e.status === 'Loss')
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                
+                let currentStreak = 0;
+                for (const trade of closedTrades) {
+                    if (trade.status === 'Win') {
+                        currentStreak++;
+                    } else {
+                        break; // Streak is broken by a loss
+                    }
+                }
+                setWinStreak(currentStreak);
+            } catch (e) {
+                console.error("Failed to calculate win streak", e);
+            }
+        };
+
+        window.addEventListener('journalUpdated', calculateWinStreak);
+        calculateWinStreak(); // Initial calculation
+        
+        return () => {
+            window.removeEventListener('journalUpdated', calculateWinStreak);
+        };
+
     }, []);
 
     const handleRiskSettingsChange = (field: string, value: any) => { setRiskSettings(prev => { const newState = JSON.parse(JSON.stringify(prev)); setNestedValue(newState, field, value); return newState; }); };
@@ -91,7 +122,11 @@ const SettingsPage: React.FC = () => {
     const handleImportClick = () => { fileInputRef.current?.click(); };
     const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setIsImporting(true); const reader = new FileReader(); reader.onload = async (e) => { try { const text = e.target?.result; if (typeof text !== 'string') throw new Error('File content is not readable.'); const data = JSON.parse(text); if (!Array.isArray(data) || data.some(item => typeof item.id !== 'string' || typeof item.date !== 'string')) throw new Error('فایل نامعتبر است یا فرمت درستی ندارد.'); for (const entry of data as JournalEntry[]) { await addJournalEntry(entry); } addNotification(`${data.length} معامله با موفقیت وارد شد.`, 'success'); } catch (error: any) { console.error("Import failed:", error); addNotification(error.message || 'خطا در وارد کردن فایل.', 'error'); } finally { setIsImporting(false); if(event.target) event.target.value = ''; } }; reader.onerror = () => { addNotification('خطا در خواندن فایل.', 'error'); setIsImporting(false); }; reader.readAsText(file); };
     const renderDefaultValueInput = (field: typeof JOURNAL_FORM_FIELDS[0]) => { const setting = formSettings[field.id]; const isNotConfigurable = field.type === 'special' || ['tags', 'mistakes', 'notesBefore', 'notesAfter', 'imageUrl'].includes(field.id); if (!setting || !setting.isActive || isNotConfigurable) return <div className="w-full h-9 bg-gray-100 dark:bg-gray-700/50 rounded-md" title="این فیلد مقدار پیش‌فرض ندارد"></div>; const commonProps = { value: setting.defaultValue ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => handleFormSettingChange(field.id, 'defaultValue', e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value), className: "w-full p-2 border rounded text-xs dark:bg-gray-700 dark:border-gray-600", placeholder: field.placeholder, }; if (field.type === 'select') { let options: {value: string, label: string}[] = []; if (field.id === 'setupId') options = setups.map(s => ({ value: s.id, label: s.name })); if (field.id === 'psychology.emotionBefore') options = EMOTIONS_BEFORE.map(e => ({ value: e, label: e })); if (field.id === 'psychology.entryReason') options = ENTRY_REASONS.map(e => ({ value: e, label: e })); if (field.id === 'psychology.emotionAfter') options = EMOTIONS_AFTER.map(e => ({ value: e, label: e })); return ( <select {...commonProps}> <option value="">پیش‌فرض ندارد</option> {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)} </select> ); } return <input type={field.type} step="any" {...commonProps} />; };
+    
     const riskAmount = (riskSettings.accountBalance * riskSettings.fixedPercent.risk) / 100;
+    const { baseRisk, increment, maxRisk } = riskSettings.antiMartingale;
+    const effectiveRiskPercent = Math.min(baseRisk + (winStreak * increment), maxRisk);
+    const effectiveRiskAmount = (riskSettings.accountBalance * effectiveRiskPercent) / 100;
 
     const ToggleSwitch: React.FC<{checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean;}> = ({ checked, onChange, disabled=false }) => (
         <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} disabled={disabled} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div></label>
@@ -116,8 +151,8 @@ const SettingsPage: React.FC = () => {
                     <div className="space-y-4">
                         <div><label className="block text-sm font-medium mb-1">موجودی حساب ($)</label><input type="number" value={riskSettings.accountBalance} onChange={e => handleRiskSettingsChange('accountBalance', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" /></div>
                         <div><label className="block text-sm font-medium mb-1">استراتژی مدیریت حجم</label><select value={riskSettings.strategy} onChange={e => handleRiskSettingsChange('strategy', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="fixed_percent">درصد ثابت</option><option value="anti_martingale">افزایشی (ضد مارتینگل)</option></select></div>
-                        {riskSettings.strategy === 'fixed_percent' && (<div><label className="block text-sm font-medium mb-1">درصد ریسک در هر معامله (%)</label><div className="flex items-center gap-2"><input type="number" step="0.1" value={riskSettings.fixedPercent.risk} onChange={e => handleRiskSettingsChange('fixedPercent.risk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" /><span className="text-sm text-gray-500 whitespace-nowrap">= ${riskAmount.toFixed(2)}</span></div></div>)}
-                        {riskSettings.strategy === 'anti_martingale' && (<div className="space-y-3 p-3 border rounded-md dark:border-gray-600"><h4 className="text-xs font-semibold">تنظیمات استراتژی افزایشی</h4><div><label className="block text-xs font-medium mb-1">درصد ریسک پایه (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.baseRisk} onChange={e => handleRiskSettingsChange('antiMartingale.baseRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">افزایش ریسک بعد از هر برد (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.increment} onChange={e => handleRiskSettingsChange('antiMartingale.increment', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">حداکثر درصد ریسک (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.maxRisk} onChange={e => handleRiskSettingsChange('antiMartingale.maxRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div></div>)}
+                        {riskSettings.strategy === 'fixed_percent' && (<div><label className="block text-sm font-medium mb-1">درصد ریسک در هر معامله (%)</label><input type="number" step="0.1" value={riskSettings.fixedPercent.risk} onChange={e => handleRiskSettingsChange('fixedPercent.risk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 1" /><div className="p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm"><p>مبلغ قابل ریسک برای هر معامله: <strong className="font-mono text-indigo-500">${riskAmount.toFixed(2)}</strong></p></div></div>)}
+                        {riskSettings.strategy === 'anti_martingale' && (<div className="space-y-3 p-3 border rounded-md dark:border-gray-600"><h4 className="text-xs font-semibold">تنظیمات استراتژی افزایشی</h4><div><label className="block text-xs font-medium mb-1">درصد ریسک پایه (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.baseRisk} onChange={e => handleRiskSettingsChange('antiMartingale.baseRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">افزایش ریسک بعد از هر برد (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.increment} onChange={e => handleRiskSettingsChange('antiMartingale.increment', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div><label className="block text-xs font-medium mb-1">حداکثر درصد ریسک (%)</label><input type="number" step="0.1" value={riskSettings.antiMartingale.maxRisk} onChange={e => handleRiskSettingsChange('antiMartingale.maxRisk', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /></div><div className="p-3 border rounded-md dark:border-gray-500 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm space-y-1"><p>رشته پیروزی‌های متوالی فعلی: <span className="font-bold">{winStreak}</span></p><p>درصد ریسک موثر برای معامله بعدی: <strong className="font-mono text-indigo-500">{effectiveRiskPercent.toFixed(2)}%</strong></p><p>مبلغ قابل ریسک: <strong className="font-mono text-indigo-500">${effectiveRiskAmount.toFixed(2)}</strong></p></div></div>)}
                     </div>
                     <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4"><button onClick={handleSaveRisk} className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors"><Save size={18} /><span>ذخیره تنظیمات ریسک</span></button></div>
                  </SettingsSection>
