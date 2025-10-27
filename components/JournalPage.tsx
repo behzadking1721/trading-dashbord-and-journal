@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
 import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info, DollarSign, Percent, BarChart2, Target, CheckCircle, XIcon } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info, DollarSign, Percent, BarChart2, Target, CheckCircle, Search, BookOpen } from 'lucide-react';
 
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
@@ -31,13 +31,15 @@ const SummaryCard: React.FC<{ title: string; value: string | number; icon: React
   );
 };
 
+const initialFilters = { symbol: '', side: 'all', status: 'all', setupId: 'all', time: 'all' };
+
 const JournalPage: React.FC = () => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-    const [filters, setFilters] = useState({ symbol: '', side: 'all', status: 'all', setupId: 'all', time: 'all' });
+    const [filters, setFilters] = useState(initialFilters);
     const [setups, setSetups] = useState<TradingSetup[]>([]);
 
     const loadEntries = useCallback(async () => {
@@ -87,13 +89,19 @@ const JournalPage: React.FC = () => {
                 const now = new Date();
                 const entryDate = new Date(entry.date);
                 const days = { '7d': 7, '30d': 30, '90d': 90 }[filters.time as '7d' | '30d' | '90d'];
-                const filterDate = new Date(now.setDate(now.getDate() - days));
-                timeMatch = entryDate >= filterDate;
+                if (days) {
+                    const filterDate = new Date(now.setDate(now.getDate() - days));
+                    timeMatch = entryDate >= filterDate;
+                }
             }
 
             return symbolMatch && sideMatch && statusMatch && setupMatch && timeMatch;
         });
     }, [entries, filters]);
+    
+    const handleResetFilters = () => {
+        setFilters(initialFilters);
+    };
 
     const handleOpenModal = (entry: JournalEntry | null = null) => {
         setEditingEntry(entry);
@@ -156,12 +164,21 @@ const JournalPage: React.FC = () => {
                 <SummaryCard title="R/R متوسط" value={summaryStats.avgRR.toFixed(2)} icon={Target} isLoading={loading} />
             </div>
 
-             <div className="p-4 rounded-lg bg-gray-100/50 dark:bg-gray-800/20 mb-6 flex flex-wrap items-center gap-4 text-sm">
-                <input type="text" placeholder="جستجوی نماد..." value={filters.symbol} onChange={e => setFilters(f => ({ ...f, symbol: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                <select value={filters.side} onChange={e => setFilters(f => ({ ...f, side: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه جهت‌ها</option><option value="Buy">خرید</option><option value="Sell">فروش</option></select>
-                <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه وضعیت‌ها</option><option value="Open">باز</option><option value="Win">برد</option><option value="Loss">باخت</option><option value="Breakeven">سر به سر</option></select>
-                <select value={filters.setupId} onChange={e => setFilters(f => ({ ...f, setupId: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه ستاپ‌ها</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                 <select value={filters.time} onChange={e => setFilters(f => ({ ...f, time: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه زمان‌ها</option><option value="7d">۷ روز اخیر</option><option value="30d">۳۰ روز اخیر</option><option value="90d">۹۰ روز اخیر</option></select>
+             <div className="p-4 rounded-lg bg-gray-100/50 dark:bg-gray-800/20 mb-6 space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="font-bold text-md">فیلترها و جستجو</h3>
+                    <button onClick={handleResetFilters} className="text-xs text-indigo-500 hover:underline">پاک کردن فیلترها</button>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <div className="relative">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <input type="text" placeholder="جستجوی نماد..." value={filters.symbol} onChange={e => setFilters(f => ({ ...f, symbol: e.target.value }))} className="p-2 pr-10 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                    </div>
+                    <select value={filters.side} onChange={e => setFilters(f => ({ ...f, side: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه جهت‌ها</option><option value="Buy">خرید</option><option value="Sell">فروش</option></select>
+                    <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه وضعیت‌ها</option><option value="Open">باز</option><option value="Win">برد</option><option value="Loss">باخت</option><option value="Breakeven">سر به سر</option></select>
+                    <select value={filters.setupId} onChange={e => setFilters(f => ({ ...f, setupId: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه ستاپ‌ها</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                    <select value={filters.time} onChange={e => setFilters(f => ({ ...f, time: e.target.value }))} className="p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"><option value="all">همه زمان‌ها</option><option value="7d">۷ روز اخیر</option><option value="30d">۳۰ روز اخیر</option><option value="90d">۹۰ روز اخیر</option></select>
+                </div>
             </div>
 
 
@@ -183,20 +200,22 @@ const JournalPage: React.FC = () => {
                         {loading ? (
                             <tr><td colSpan={8} className="text-center py-10"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></td></tr>
                         ) : filteredEntries.length > 0 ? filteredEntries.map(entry => (
-                            <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
-                                <td className="px-4 py-3 font-mono" onClick={() => handleOpenModal(entry)}>{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
-                                <td className="px-4 py-3 font-semibold" onClick={() => handleOpenModal(entry)}>{entry.symbol?.toUpperCase() || '-'}</td>
-                                <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : entry.side === 'Sell' ? 'text-red-500' : ''}`} onClick={() => handleOpenModal(entry)}>
+                            <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => handleOpenModal(entry)}>
+                                <td className="px-4 py-3 font-mono">{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
+                                <td className="px-4 py-3 font-semibold">{entry.symbol?.toUpperCase() || '-'}</td>
+                                <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : entry.side === 'Sell' ? 'text-red-500' : ''}`}>
                                     {entry.side === 'Buy' ? <TrendingUp size={16} /> : entry.side === 'Sell' ? <TrendingDown size={16} /> : null}
                                     {entry.side === 'Buy' ? 'خرید' : entry.side === 'Sell' ? 'فروش' : '-'}
                                 </td>
-                                <td className="px-4 py-3" onClick={() => handleOpenModal(entry)}>{renderStatusBadge(entry.status)}</td>
-                                <td className="px-4 py-3 text-gray-500 dark:text-gray-400" onClick={() => handleOpenModal(entry)}>{entry.setupName || '-'}</td>
-                                <td className="px-4 py-3 font-mono" onClick={() => handleOpenModal(entry)}>{entry.riskRewardRatio?.toFixed(2) || '-'}</td>
-                                 <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss == null ? 'text-blue-500' : entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`} onClick={() => handleOpenModal(entry)}>
-                                    {entry.profitOrLoss != null ? `$${entry.profitOrLoss.toFixed(2)}` : 'باز'}
+                                <td className="px-4 py-3">{renderStatusBadge(entry.status)}</td>
+                                <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
+                                <td className="px-4 py-3 font-mono">{entry.riskRewardRatio?.toFixed(2) || '-'}</td>
+                                <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss == null ? 'text-blue-500' : entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <span className={`px-2 py-1 rounded ${entry.profitOrLoss == null ? '' : entry.profitOrLoss >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                        {entry.profitOrLoss != null ? `$${entry.profitOrLoss.toFixed(2)}` : 'باز'}
+                                    </span>
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-1">
                                         {entry.entryPrice && (
                                             <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
@@ -214,8 +233,22 @@ const JournalPage: React.FC = () => {
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={8} className="text-center py-10 text-gray-500">
-                                    {entries.length === 0 ? 'هیچ معامله‌ای ثبت نشده است.' : 'هیچ معامله‌ای با این فیلترها یافت نشد.'}
+                                <td colSpan={8} className="text-center py-16">
+                                    <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+                                    <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                        {entries.length === 0 ? 'ژورنال شما خالی است' : 'موردی یافت نشد'}
+                                    </h3>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        {entries.length === 0 ? 'برای شروع، اولین معامله خود را ثبت کنید.' : 'فیلترهای خود را تغییر دهید یا آن‌ها را پاک کنید.'}
+                                    </p>
+                                    {entries.length === 0 && !loading && (
+                                        <div className="mt-6">
+                                            <button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors text-sm">
+                                                <Plus size={16} />
+                                                <span>ثبت معامله جدید</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         )}
