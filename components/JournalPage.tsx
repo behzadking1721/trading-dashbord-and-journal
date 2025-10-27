@@ -315,6 +315,79 @@ const setNestedValue = (obj: any, path: string, value: any) => {
     current[keys[keys.length - 1]] = value;
 };
 
+const RiskAnalysisHeader: React.FC<{ calculations: any; effectiveSide: 'Buy' | 'Sell' | null }> = ({ calculations, effectiveSide }) => {
+    const { rr, riskPercent, potentialPnl, isValid } = calculations;
+    const riskValue = parseFloat(riskPercent);
+    const rrValue = parseFloat(rr);
+
+    const getRiskColor = (risk: number) => {
+        if (isNaN(risk) || !isValid) return { bar: 'bg-gray-400', text: 'text-gray-500 dark:text-gray-400' };
+        if (risk > 3) return { bar: 'bg-red-500', text: 'text-red-500' };
+        if (risk > 1.5) return { bar: 'bg-yellow-500', text: 'text-yellow-500' };
+        return { bar: 'bg-green-500', text: 'text-green-500' };
+    };
+
+    const riskColor = getRiskColor(riskValue);
+    const riskBarWidth = isNaN(riskValue) || !isValid ? 0 : Math.min(riskValue * 20, 100); // Capped at 5% risk for visual max
+
+    return (
+        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 border-b dark:border-gray-700 text-sm">
+             <div className="flex items-center gap-2 mb-4">
+                 <h3 className="text-md font-bold text-gray-800 dark:text-gray-200">تحلیل ریسک لحظه‌ای</h3>
+                 <div className="relative group">
+                    <Info size={16} className="text-gray-400 cursor-pointer" />
+                    <div className="absolute bottom-full mb-2 -right-1/2 transform translate-x-1/2 w-64 p-2 text-xs text-white bg-gray-900 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        محاسبات بر اساس لات استاندارد فارکس (۱۰۰،۰۰۰ واحد) است. برای سایر دارایی‌ها ممکن است دقیق نباشد.
+                        <svg className="absolute text-gray-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                    </div>
+                </div>
+             </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+                {/* Risk/Reward Visualizer */}
+                <div className="space-y-1">
+                    <div className="flex justify-between items-baseline">
+                        <label className="font-semibold text-xs">ریسک به ریوارد</label>
+                         <span className={`font-mono font-bold text-lg ${!isValid ? 'text-gray-400' : ''}`}>{isValid ? rr : 'N/A'}</span>
+                    </div>
+                    <div className={`flex h-6 w-full rounded-md overflow-hidden text-white text-xs font-bold items-center justify-center ${!isValid || isNaN(rrValue) ? 'bg-gray-300 dark:bg-gray-600' : ''}`}>
+                        {isValid && !isNaN(rrValue) && rrValue > 0 && (
+                            <>
+                                <div className="bg-red-500 flex items-center justify-center h-full" style={{ flex: 1 }}>1 R</div>
+                                <div className="bg-green-500 flex items-center justify-center h-full" style={{ flex: rrValue }}>{rrValue.toFixed(1)} R</div>
+                            </>
+                        )}
+                    </div>
+                </div>
+                 {/* Risk % Gauge */}
+                <div className="space-y-1">
+                     <div className="flex justify-between items-baseline">
+                        <label className="font-semibold text-xs">درصد ریسک</label>
+                        <span className={`font-mono font-bold text-lg ${riskColor.text}`}>{riskPercent}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-6 relative overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-300 ${riskColor.bar}`} style={{ width: `${riskBarWidth}%` }}></div>
+                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white mix-blend-difference">
+                           {riskPercent} از موجودی
+                         </span>
+                    </div>
+                </div>
+                {/* Potential P&L */}
+                 <div className="space-y-1">
+                     <div className="flex justify-between items-baseline">
+                        <label className="font-semibold text-xs">سود/ضرر احتمالی</label>
+                        <span className={`font-mono font-bold text-lg ${!isValid ? 'text-gray-400' : 'text-green-500'}`}>
+                           {isValid ? potentialPnl : '$0.00'}
+                        </span>
+                    </div>
+                    <div className="p-2 h-6 flex items-center justify-center bg-gray-200 dark:bg-gray-600 rounded-md">
+                         <p className="text-xs text-gray-600 dark:text-gray-300">بر اساس رسیدن به حد سود</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entry: JournalEntry | null; }> = ({ onClose, onSave, entry }) => {
     const [formSettings, setFormSettings] = useState<JournalFormSettings>({});
@@ -349,456 +422,387 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const [isPsychoAnalysisOpen, setIsPsychoAnalysisOpen] = useState(() => {
         try { return localStorage.getItem(PSYCHO_ANALYSIS_LS_KEY) === 'true'; } catch { return false; }
     });
-    const entryPriceRef = useRef<HTMLInputElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const [tagInput, setTagInput] = useState('');
     const [allTags, setAllTags] = useState<string[]>([]);
-    const [slSuggestion, setSlSuggestion] = useState<number | null>(null);
+    const tagInputRef = useRef<HTMLInputElement>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(entry?.imageUrl || null);
+    const [isSmartEntryOpen, setIsSmartEntryOpen] = useState(false);
+    const [winStreak, setWinStreak] = useState(0);
 
-    const loadRiskSettings = useCallback(() => {
-        try {
-            const savedRiskSettings = localStorage.getItem(STORAGE_KEY_RISK_SETTINGS);
-            if (savedRiskSettings) {
-                setRiskSettings(JSON.parse(savedRiskSettings));
-            } else {
-                const defaultSettings: RiskSettings = { accountBalance: 10000, strategy: 'fixed_percent', fixedPercent: { risk: 1 }, antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }};
-                setRiskSettings(defaultSettings);
-            }
-        } catch (e) { console.error("Could not load risk settings:", e); }
-    }, []);
-
-    useEffect(() => {
-        const loadInitialData = async () => {
-             try {
-                const savedFormSettings = localStorage.getItem(STORAGE_KEY_FORM_SETTINGS);
-                setFormSettings(savedFormSettings ? JSON.parse(savedFormSettings) : {});
-
-                const savedSetups = localStorage.getItem('trading-setups');
-                if (savedSetups) setSetups(JSON.parse(savedSetups));
-                
-                loadRiskSettings();
-
-                const existingTags = await getAllTags();
-                setAllTags(existingTags);
-            } catch(e) { console.error(e) }
-        };
-        loadInitialData();
-        entryPriceRef.current?.focus();
-        
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e);
+    const effectiveSide = useMemo(() => {
+        if (formData.entryPrice != null && formData.stopLoss != null) {
+            return formData.entryPrice > formData.stopLoss ? 'Buy' : 'Sell';
         }
-        window.addEventListener('keydown', handleKeyDown);
+        return manualSide;
+    }, [formData.entryPrice, formData.stopLoss, manualSide]);
 
-        const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === STORAGE_KEY_RISK_SETTINGS) {
-                loadRiskSettings();
-            }
-        };
-        window.addEventListener('storage', handleStorageChange);
+     const calculations = useMemo(() => {
+        const { entryPrice, stopLoss, takeProfit, positionSize } = formData;
+        const balance = riskSettings?.accountBalance || 0;
 
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('storage', handleStorageChange);
+        if (entryPrice == null || stopLoss == null || takeProfit == null || positionSize == null || balance === 0 || effectiveSide === null) {
+            return { rr: '0.00', riskPercent: '0.00%', potentialPnl: '$0.00', isValid: false };
         }
-    }, [loadRiskSettings]);
 
-    useEffect(() => {
-        const initialState = getInitialState();
-        if (!entry) {
-            const savedDraft = localStorage.getItem(DRAFT_KEY);
-            if (savedDraft) {
-                setFormData(JSON.parse(savedDraft));
-                setDraftLoaded(true);
-            } else {
-                 setFormData(initialState);
-            }
-        } else {
-            setFormData(initialState);
+        const riskAmount = Math.abs(entryPrice - stopLoss) * positionSize * 100000;
+        const rewardAmount = Math.abs(takeProfit - entryPrice) * positionSize * 100000;
+        
+        const isValid = riskAmount > 0 && rewardAmount > 0;
+        if (!isValid) {
+            return { rr: '0.00', riskPercent: '0.00%', potentialPnl: '$0.00', isValid: false };
         }
-    }, [entry, formSettings, getInitialState]);
 
-    useEffect(() => {
-        if (!entry) {
-             try {
-                 localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-            } catch (e) { console.warn("Could not save draft to localStorage.", e); }
-        }
-    }, [formData, entry]);
+        const rr = rewardAmount / riskAmount;
+        const riskPercent = (riskAmount / balance) * 100;
 
-
-    const detectedSide = useMemo<'Buy' | 'Sell' | null>(() => {
-        const { entryPrice, stopLoss, takeProfit } = formData;
-        if (entryPrice == null || stopLoss == null || takeProfit == null) return null;
-        if (takeProfit > entryPrice && stopLoss < entryPrice) return 'Buy';
-        if (takeProfit < entryPrice && stopLoss > entryPrice) return 'Sell';
-        return null;
-    }, [formData.entryPrice, formData.stopLoss, formData.takeProfit]);
-
-    const effectiveSide = manualSide || detectedSide;
-
-    const calculations = useMemo(() => {
-        const { entryPrice, stopLoss, takeProfit, positionSize = 1 } = formData;
-        if (entryPrice == null || stopLoss == null || takeProfit == null || !riskSettings || !effectiveSide) {
-            return { rr: 'N/A', riskPercent: 'N/A', potentialPnl: 'N/A', isValid: false };
-        }
-        
-        const riskDistance = Math.abs(entryPrice - stopLoss);
-        const rewardDistance = Math.abs(takeProfit - entryPrice);
-        
-        if (riskDistance === 0) return { rr: '∞', riskPercent: 'N/A', potentialPnl: '∞', isValid: false };
-
-        const rr = rewardDistance / riskDistance;
-        const pnl = rewardDistance * positionSize * 100000 * (effectiveSide === 'Buy' ? 1 : -1);
-        const riskAmount = riskDistance * positionSize * 100000;
-        const riskPercent = (riskAmount / riskSettings.accountBalance) * 100;
-        
-        const isValid = (effectiveSide === 'Buy' && takeProfit > entryPrice && stopLoss < entryPrice) ||
-                        (effectiveSide === 'Sell' && takeProfit < entryPrice && stopLoss > entryPrice);
-        
         return {
             rr: rr.toFixed(2),
             riskPercent: `${riskPercent.toFixed(2)}%`,
-            potentialPnl: `$${pnl.toFixed(2)}`,
-            isValid: isValid
+            potentialPnl: `$${rewardAmount.toFixed(2)}`,
+            isValid: true,
         };
     }, [formData, riskSettings, effectiveSide]);
 
-     const suggestedTags = useMemo(() => {
-        const suggestions = new Set<string>();
-        if (calculations.isValid && parseFloat(calculations.rr) >= 3) {
-            suggestions.add('ریسک به ریوارد بالا');
-        }
-        if (formData.symbol?.toLowerCase().includes('usd')) {
-            suggestions.add('جفت ارز اصلی');
-        }
-        if (formData.symbol?.toLowerCase().includes('jpy')) {
-            suggestions.add('ین ژاپن');
-        }
-        const currentUTCHour = new Date().getUTCHours();
-        if (currentUTCHour >= 13 && currentUTCHour < 22) {
-            suggestions.add('جلسه نیویورک');
-        }
-        return Array.from(suggestions).filter(t => !formData.tags?.includes(t));
-    }, [formData.symbol, calculations.rr, formData.tags]);
+
+    const updateRiskSettings = useCallback(() => {
+        try {
+            const savedRisk = localStorage.getItem(STORAGE_KEY_RISK_SETTINGS);
+            if(savedRisk) setRiskSettings(JSON.parse(savedRisk));
+        } catch (error) { console.error("Could not load risk settings:", error); }
+    }, []);
 
     useEffect(() => {
-        if (!formData.setupId) return;
+        // Load initial data for the form
+        const loadInitialData = async () => {
+            try {
+                // Load Form Field Settings
+                const savedFormSettings = localStorage.getItem(STORAGE_KEY_FORM_SETTINGS);
+                const initialFormSettings = savedFormSettings ? JSON.parse(savedFormSettings) : {};
+                setFormSettings(initialFormSettings);
+                
+                // Load Setups
+                const savedSetups = localStorage.getItem('trading-setups');
+                if (savedSetups) {
+                    const parsedSetups = JSON.parse(savedSetups);
+                    setSetups(parsedSetups);
+                    
+                    const activeSetup = parsedSetups.find((s: TradingSetup) => s.isActive);
+                    if (!entry && activeSetup) {
+                        setFormData(prev => ({ ...prev, setupId: activeSetup.id }));
+                    }
+                }
+                
+                // Load Risk Settings
+                updateRiskSettings();
+                
+                // Load all tags for suggestions
+                const tags = await getAllTags();
+                setAllTags(tags);
 
-        const selectedSetup = setups.find(s => s.id === formData.setupId);
-        if (!selectedSetup) return;
+                 // Load win streak for anti-martingale
+                const entries = await getJournalEntries();
+                const closedTrades = entries
+                    .filter(e => e.status === 'Win' || e.status === 'Loss')
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                let currentStreak = 0;
+                for (const trade of closedTrades) {
+                    if (trade.status === 'Win') {
+                        currentStreak++;
+                    } else {
+                        break;
+                    }
+                }
+                setWinStreak(currentStreak);
 
-        const updates: Partial<FormState> = {};
-        if (selectedSetup.defaultTags) {
-            updates.tags = Array.from(new Set([...(formData.tags || []), ...selectedSetup.defaultTags]));
-        }
-        if (selectedSetup.defaultMistakes) {
-            updates.mistakes = Array.from(new Set([...(formData.mistakes || []), ...selectedSetup.defaultMistakes]));
-        }
-        
-        setFormData(prev => ({ ...prev, ...updates }));
+                // Load Draft if exists and it's a new entry
+                if (!entry) {
+                    const draft = localStorage.getItem(DRAFT_KEY);
+                    if (draft) {
+                        const parsedDraft = JSON.parse(draft);
+                        // Make sure we have a default psychology object
+                        if (!parsedDraft.psychology) parsedDraft.psychology = {};
+                        setFormData(parsedDraft);
+                    }
+                }
+                 setDraftLoaded(true);
 
-        if (selectedSetup.defaultRiskRewardRatio && formData.entryPrice != null && formData.stopLoss != null && effectiveSide) {
-            const riskDistance = Math.abs(formData.entryPrice - formData.stopLoss);
-            const rewardDistance = riskDistance * selectedSetup.defaultRiskRewardRatio;
-            const newTakeProfit = effectiveSide === 'Buy' 
-                ? formData.entryPrice + rewardDistance 
-                : formData.entryPrice - rewardDistance;
-            
-            setFormData(prev => ({ ...prev, takeProfit: newTakeProfit }));
-        }
-
-    }, [formData.setupId, effectiveSide, setups, formData.entryPrice, formData.stopLoss, formData.tags, formData.mistakes]);
-
-    useEffect(() => {
-        const getSuggestion = async () => {
-            if (!formData.symbol || formData.symbol.length < 4) {
-                setSlSuggestion(null);
-                return;
+            } catch (e) {
+                console.error("Failed to load modal data", e);
             }
-            const symbolEntries = await getEntriesBySymbol(formData.symbol);
-            if (symbolEntries.length < 3) {
-                setSlSuggestion(null);
-                return;
-            }
-
-            const totalSlDistance = symbolEntries.reduce((sum, entry) => {
-                const distance = Math.abs((entry.entryPrice || 0) - (entry.stopLoss || 0));
-                return sum + distance;
-            }, 0);
-
-            const avgSlDistance = totalSlDistance / symbolEntries.length;
-            
-            const isForex = ['usd', 'eur', 'gbp', 'jpy', 'chf', 'cad', 'aud', 'nzd'].some(c => formData.symbol!.toLowerCase().includes(c));
-            const pips = avgSlDistance * (formData.symbol!.toLowerCase().includes('jpy') ? 100 : 10000);
-
-            setSlSuggestion(isForex ? pips : avgSlDistance);
         };
-
-        const debounce = setTimeout(getSuggestion, 300);
-        return () => clearTimeout(debounce);
-
-    }, [formData.symbol]);
-
-    const applySlSuggestion = () => {
-        if (slSuggestion == null || formData.entryPrice == null || !effectiveSide) return;
-
-        const isJpyPair = formData.symbol!.toLowerCase().includes('jpy');
-        const distance = slSuggestion / (isJpyPair ? 100 : 10000);
-
-        const newStopLoss = effectiveSide === 'Buy' 
-            ? formData.entryPrice - distance 
-            : formData.entryPrice + distance;
         
-        setFormData(prev => ({ ...prev, stopLoss: newStopLoss }));
-    };
+        loadInitialData();
+        
+        // Listen for external changes to risk settings
+        window.addEventListener('storage', updateRiskSettings);
+        return () => window.removeEventListener('storage', updateRiskSettings);
 
-    const togglePsychoAnalysis = () => setIsPsychoAnalysisOpen(p => !p);
+    }, [entry, updateRiskSettings]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        const isNumberField = e.target instanceof HTMLInputElement && e.target.type === 'number';
-        setFormData(prev => ({ ...prev, [name]: isNumberField ? (value === '' ? undefined : parseFloat(value)) : value }));
-    };
-    
-    const handlePsychologyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, psychology: { ...prev.psychology, [name]: value } }));
-    };
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) {
-            alert("حجم تصویر باید کمتر از ۲ مگابایت باشد.");
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-        reader.readAsDataURL(file);
-    };
-
-    const handleMultiSelect = (name: 'mistakes', value: string) => setFormData(prev => ({ ...prev, [name]: (prev[name] || []).includes(value) ? (prev[name] || []).filter(v => v !== value) : [...(prev[name] || []), value] }));
-
-    const handleAddTag = (tag: string) => {
-        const trimmedTag = tag.trim();
-        if (trimmedTag && !formData.tags?.includes(trimmedTag)) {
-            setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), trimmedTag] }));
-        }
-        setTagInput('');
-    };
-
-    const handleRemoveTag = (tagToRemove: string) => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(tag => tag !== tagToRemove) }));
-
-    const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            handleAddTag(tagInput);
-        }
-    };
-    
-    const handleDiscardDraft = () => {
-        if (window.confirm('آیا از حذف پیش‌نویس مطمئن هستید؟')) {
-            try { localStorage.removeItem(DRAFT_KEY); } catch(e) { console.error(e) }
+    // This effect runs after draft and settings are loaded to initialize the form state
+    useEffect(() => {
+        if(draftLoaded) {
             setFormData(getInitialState());
-            setDraftLoaded(false);
         }
+    }, [draftLoaded, getInitialState]);
+
+
+    // Save draft on every change for new entries
+    useEffect(() => {
+        if (!entry && draftLoaded) {
+            try { localStorage.setItem(DRAFT_KEY, JSON.stringify(formData)); } catch (e) { console.warn(e); }
+        }
+    }, [formData, entry, draftLoaded]);
+
+    const handleInputChange = (field: keyof FormState | string, value: any) => {
+        const newState = { ...formData };
+        if (field.includes('.')) {
+            setNestedValue(newState, field, value);
+        } else {
+            (newState as any)[field] = value;
+        }
+        setFormData(newState);
     };
 
-    const handleSubmit = async (e: React.FormEvent | KeyboardEvent) => {
+    const isFieldActive = (fieldId: JournalFormField) => formSettings[fieldId]?.isActive !== false;
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        if (formSettings.symbol?.isActive && !formData.symbol) {
-            alert('نماد الزامی است.');
-            return;
-        }
-
-        const pricesProvided = formData.entryPrice != null && formData.stopLoss != null && formData.takeProfit != null;
-        if (formSettings.entryPrice?.isActive && pricesProvided && (!effectiveSide || !calculations.isValid)) {
-            alert('اطلاعات قیمت‌ها نامعتبر است (مثلاً حد سود یا ضرر در سمت اشتباه قیمت ورود است).');
-            return;
-        }
-
-        const isOutcomeActive = formSettings.outcome?.isActive;
-        const { outcome, manualExitPrice } = formData;
-        let finalExitPrice: number | undefined;
-
-        if (isOutcomeActive) {
-            if(outcome === 'Take Profit') finalExitPrice = formData.takeProfit;
-            else if(outcome === 'Stop Loss') finalExitPrice = formData.stopLoss;
-            else if(outcome === 'Manual Exit') finalExitPrice = manualExitPrice;
-            
-            if (outcome === 'Manual Exit' && finalExitPrice === undefined) {
-                alert('برای خروج دستی، قیمت خروج الزامی است.');
-                return;
-            }
-        }
-        
-        let finalPnl: number | undefined;
-        let status: JournalEntry['status'] | undefined;
-
-        if (finalExitPrice !== undefined && formData.entryPrice !== undefined && effectiveSide) {
-            const positionSize = formData.positionSize || 1;
-            finalPnl = (finalExitPrice - formData.entryPrice) * positionSize * (effectiveSide === 'Buy' ? 1 : -1) * 100000;
-            status = finalPnl > 0 ? 'Win' : finalPnl < 0 ? 'Loss' : 'Breakeven';
-        }
 
         const newEntry: JournalEntry = {
-            ...formData,
-            id: entry?.id || new Date().toISOString(), 
-            date: entry?.date || new Date().toISOString(),
+            id: entry?.id || Date.now().toString(),
+            date: new Date(formData.date!).toISOString(),
+            symbol: formData.symbol,
             side: effectiveSide || undefined,
-            exitPrice: finalExitPrice,
-            profitOrLoss: finalPnl,
-            status: status,
-            riskRewardRatio: calculations.rr !== 'N/A' && calculations.rr !== '∞' ? parseFloat(calculations.rr) : undefined,
+            entryPrice: formData.entryPrice,
+            stopLoss: formData.stopLoss,
+            takeProfit: formData.takeProfit,
+            positionSize: formData.positionSize,
+            outcome: formData.outcome,
+            setupId: formData.setupId,
             setupName: setups.find(s => s.id === formData.setupId)?.name,
+            tags: formData.tags,
+            mistakes: formData.mistakes,
+            notesBefore: formData.notesBefore,
+            notesAfter: formData.notesAfter,
+            imageUrl: imagePreview || formData.imageUrl,
+            psychology: formData.psychology,
         };
+
+        if (newEntry.entryPrice && newEntry.stopLoss && newEntry.takeProfit) {
+            const risk = Math.abs(newEntry.entryPrice - newEntry.stopLoss);
+            const reward = Math.abs(newEntry.takeProfit - newEntry.entryPrice);
+            if (risk > 0) {
+                newEntry.riskRewardRatio = reward / risk;
+            }
+        }
+        
+        if (formData.outcome === 'Take Profit') {
+            newEntry.exitPrice = formData.takeProfit;
+        } else if (formData.outcome === 'Stop Loss') {
+            newEntry.exitPrice = formData.stopLoss;
+        } else if (formData.outcome === 'Manual Exit') {
+            newEntry.exitPrice = formData.manualExitPrice;
+        }
+
+        if (newEntry.exitPrice && newEntry.entryPrice && newEntry.positionSize && newEntry.side) {
+            const priceDiff = newEntry.exitPrice - newEntry.entryPrice;
+            const pnl = newEntry.side === 'Buy' ? priceDiff : -priceDiff;
+            newEntry.profitOrLoss = pnl * newEntry.positionSize * 100000; // Standard lot size
+            
+            if (Math.abs(newEntry.profitOrLoss) < 0.01) {
+                newEntry.status = 'Breakeven';
+            } else {
+                newEntry.status = newEntry.profitOrLoss > 0 ? 'Win' : 'Loss';
+            }
+        } else {
+            newEntry.profitOrLoss = undefined;
+            newEntry.status = undefined;
+        }
         
         try {
             await addJournalEntry(newEntry);
-            if (!entry) {
-                try { localStorage.removeItem(DRAFT_KEY); } catch(e) { console.error(e) }
+            if (!entry) { // Clear draft only on successful submission of new entry
+                localStorage.removeItem(DRAFT_KEY);
             }
             onSave();
             onClose();
-        } catch (e) {
-            console.error("Failed to save journal entry:", e);
-            alert("خطا در ذخیره معامله. لطفا دوباره تلاش کنید.");
+        } catch (error) {
+            console.error("Failed to save entry:", error);
+            alert("خطا در ذخیره سازی. لطفا کنسول را برای اطلاعات بیشتر چک کنید.");
         }
     };
     
-    const isSubmitDisabled = formSettings.entryPrice?.isActive && formData.entryPrice != null && (!effectiveSide || !calculations.isValid);
+    const handleTagClick = (tag: string) => {
+        const newTags = formData.tags?.includes(tag)
+            ? formData.tags.filter(t => t !== tag)
+            : [...(formData.tags || []), tag];
+        handleInputChange('tags', newTags);
+    };
+
+    const handleMistakeClick = (mistake: string) => {
+        const newMistakes = formData.mistakes?.includes(mistake)
+            ? formData.mistakes.filter(m => m !== mistake)
+            : [...(formData.mistakes || []), mistake];
+        handleInputChange('mistakes', newMistakes);
+    };
+    
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setImagePreview(event.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const applySmartEntry = () => {
+        if (!riskSettings) return;
+
+        let riskPercentToUse = riskSettings.fixedPercent.risk;
+        if (riskSettings.strategy === 'anti_martingale') {
+            // FIX: Corrected property access from anti_martingale to antiMartingale
+            const { baseRisk, increment, maxRisk } = riskSettings.antiMartingale;
+            riskPercentToUse = Math.min(baseRisk + (winStreak * increment), maxRisk);
+        }
+        
+        const riskAmount = (riskSettings.accountBalance * riskPercentToUse) / 100;
+        const rr = formData.riskRewardRatio || 2; // Default to 2 if not set
+        
+        if (formData.entryPrice && formData.stopLoss && effectiveSide) {
+            const riskPips = Math.abs(formData.entryPrice - formData.stopLoss);
+            if (riskPips > 0) {
+                 const pipValue = 10; // Assuming standard lot on majors ~ $10/pip
+                 const lotSize = riskAmount / (riskPips * 100000 / pipValue);
+                 handleInputChange('positionSize', parseFloat(lotSize.toFixed(2)));
+
+                 const rewardPips = riskPips * rr;
+                 const takeProfit = effectiveSide === 'Buy' 
+                    ? formData.entryPrice + rewardPips
+                    : formData.entryPrice - rewardPips;
+                 handleInputChange('takeProfit', parseFloat(takeProfit.toFixed(5)));
+            }
+        }
+        setIsSmartEntryOpen(false);
+    };
+    
+    const onSetupChange = (setupId: string) => {
+        handleInputChange('setupId', setupId);
+        const selectedSetup = setups.find(s => s.id === setupId);
+        if (selectedSetup) {
+            if (selectedSetup.defaultRiskRewardRatio) handleInputChange('riskRewardRatio', selectedSetup.defaultRiskRewardRatio);
+            if (selectedSetup.defaultTags) handleInputChange('tags', selectedSetup.defaultTags);
+            if (selectedSetup.defaultMistakes) handleInputChange('mistakes', selectedSetup.defaultMistakes);
+        }
+    };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-                    <h2 className="text-xl font-bold">{entry ? 'ویرایش معامله' : 'ثبت معامله هوشمند'}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button>
+                    <h2 className="text-xl font-bold">{entry ? 'ویرایش معامله' : 'ثبت معامله جدید'}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XCircle size={24} /></button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="flex-grow flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-around p-3 bg-gray-50 dark:bg-gray-700/50 border-b dark:border-gray-700 text-sm">
-                        <div className="flex items-center gap-2">
-                             <button type="button" onClick={() => setManualSide(effectiveSide === 'Buy' ? 'Sell' : 'Buy')} className={`flex items-center gap-1 font-bold p-1 rounded-md ${effectiveSide === 'Buy' ? 'text-green-500' : effectiveSide === 'Sell' ? 'text-red-500' : 'text-gray-500'}`} title="تغییر جهت دستی">
-                                {effectiveSide === 'Buy' ? <TrendingUp size={16}/> : effectiveSide === 'Sell' ? <TrendingDown size={16}/> : <ExternalLink size={16}/>}
-                                <span>{effectiveSide || '...'}</span>
-                                {manualSide && <span className="text-xs font-normal text-gray-400">(دستی)</span>}
-                            </button>
-                        </div>
-                        <span><strong className="ml-1">R/R:</strong>{calculations.rr}</span>
-                        <span><strong className="ml-1">ریسک:</strong>{calculations.riskPercent}</span>
-                        <span className={effectiveSide === 'Buy' ? 'text-green-500' : 'text-red-500'}><strong className="ml-1 text-gray-800 dark:text-gray-200">PnL:</strong>{calculations.potentialPnl}</span>
-                        {isSubmitDisabled && <span title="مقادیر نامعتبر"><AlertTriangle size={16} className="text-red-500" /></span>}
-                    </div>
+                <RiskAnalysisHeader calculations={calculations} effectiveSide={effectiveSide} />
 
-                    <div className="p-6 space-y-4 overflow-y-auto">
-                         {draftLoaded && (
-                            <div className="flex items-center justify-center gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300 text-xs rounded-md">
-                                <Info size={14} />
-                                <span>پیش‌نویس قبلی شما بارگذاری شد.</span>
-                                <button type="button" onClick={handleDiscardDraft} className="font-semibold hover:underline">حذف</button>
+                <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Column 1: Core Trade Data */}
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-md border-b pb-2 dark:border-gray-600">اطلاعات اصلی</h3>
+                            <div><label className="text-sm">تاریخ و زمان</label><input type="datetime-local" value={formData.date ? new Date(formData.date).toISOString().substring(0, 16) : ''} onChange={e => handleInputChange('date', new Date(e.target.value).toISOString())} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>
+                            
+                            {isFieldActive('symbol') && (<div><label className="text-sm">نماد</label><input type="text" placeholder="EURUSD" required value={formData.symbol || ''} onChange={e => handleInputChange('symbol', e.target.value.toUpperCase())} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>)}
+
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="side" value="Buy" checked={effectiveSide === 'Buy'} onChange={() => setManualSide('Buy')} disabled={formData.entryPrice != null && formData.stopLoss != null} className="form-radio text-green-500"/> خرید </label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="side" value="Sell" checked={effectiveSide === 'Sell'} onChange={() => setManualSide('Sell')} disabled={formData.entryPrice != null && formData.stopLoss != null} className="form-radio text-red-500"/> فروش </label>
                             </div>
-                        )}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                           {formSettings.symbol?.isActive && <input type="text" name="symbol" placeholder="نماد" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 md:col-span-1" value={formData.symbol || ''} onChange={handleChange} autoFocus />}
-                           {formSettings.entryPrice?.isActive && <input ref={entryPriceRef} type="number" name="entryPrice" step="any" placeholder="قیمت ورود" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.entryPrice === undefined ? '' : formData.entryPrice} onChange={handleChange}/>}
-                           {formSettings.stopLoss?.isActive && <div className="relative">
-                                <input type="number" name="stopLoss" step="any" placeholder="حد ضرر" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.stopLoss === undefined ? '' : formData.stopLoss} onChange={handleChange}/>
-                                {slSuggestion !== null && (
-                                     <div className="absolute -bottom-6 left-0 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                        <Wand2 size={12} className="text-indigo-400"/>
-                                        <span>میانگین SL: {slSuggestion.toFixed(1)} پیپ.</span>
-                                        <button type="button" onClick={applySlSuggestion} className="text-indigo-500 hover:underline">اعمال</button>
-                                    </div>
-                                )}
-                            </div>}
-                           {formSettings.takeProfit?.isActive && <input type="number" name="takeProfit" step="any" placeholder="حد سود" className={`p-2 border rounded dark:bg-gray-700 dark:border-gray-600 ${isSubmitDisabled ? 'border-red-500' : ''}`} value={formData.takeProfit === undefined ? '' : formData.takeProfit} onChange={handleChange}/>}
-                           {formSettings.positionSize?.isActive && <input type="number" name="positionSize" step="any" placeholder="حجم (لات)" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.positionSize === undefined ? '' : formData.positionSize} onChange={handleChange}/>}
-                        </div>
-
-                        {formSettings.outcome?.isActive && <fieldset className="border p-4 rounded-md dark:border-gray-600">
-                            <legend className="px-2 font-semibold text-sm">ثبت نتیجه معامله</legend>
+                            
                             <div className="grid grid-cols-2 gap-4">
-                                 <select name="outcome" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.outcome || ''} onChange={handleChange}>
-                                    <option value="Manual Exit">خروج دستی</option>
+                                {isFieldActive('entryPrice') && (<div><label className="text-sm">قیمت ورود</label><input type="number" step="any" min="0" placeholder="1.2345" value={formData.entryPrice || ''} onChange={e => handleInputChange('entryPrice', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>)}
+                                {isFieldActive('positionSize') && (<div><label className="text-sm">حجم (لات)</label><input type="number" step="0.01" min="0" placeholder="0.1" value={formData.positionSize || ''} onChange={e => handleInputChange('positionSize', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>)}
+                            </div>
+                           
+                            <details className="border rounded-md dark:border-gray-600" open={isSmartEntryOpen} onToggle={(e) => setIsSmartEntryOpen((e.target as HTMLDetailsElement).open)}>
+                                <summary className="p-3 cursor-pointer font-semibold text-sm list-none flex justify-between items-center">ورود هوشمند<Wand2 size={16} className="text-indigo-400" /></summary>
+                                <div className="p-3 border-t dark:border-gray-600 space-y-3">
+                                    <p className="text-xs text-gray-500">با تعیین ریسک به ریوارد، حجم و حد سود شما بر اساس تنظیمات ریسک‌تان محاسبه می‌شود.</p>
+                                    <div><label className="text-xs">ریسک به ریوارد (R/R)</label><input type="number" step="0.1" min="0" value={formData.riskRewardRatio || ''} onChange={e => handleInputChange('riskRewardRatio', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>
+                                    <button type="button" onClick={applySmartEntry} className="w-full text-sm bg-indigo-500 text-white py-2 rounded-md hover:bg-indigo-600">اعمال محاسبه</button>
+                                </div>
+                            </details>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {isFieldActive('stopLoss') && (<div><label className="text-sm">حد ضرر</label><input type="number" step="any" min="0" placeholder="1.2300" value={formData.stopLoss || ''} onChange={e => handleInputChange('stopLoss', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>)}
+                                {isFieldActive('takeProfit') && (<div><label className="text-sm">حد سود</label><input type="number" step="any" min="0" placeholder="1.2500" value={formData.takeProfit || ''} onChange={e => handleInputChange('takeProfit', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600" /></div>)}
+                            </div>
+
+                             {isFieldActive('outcome') && (
+                                <div>
+                                <label className="text-sm">نتیجه معامله</label>
+                                <select value={formData.outcome || ''} onChange={e => handleInputChange('outcome', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600">
                                     <option value="Take Profit">حد سود</option>
                                     <option value="Stop Loss">حد ضرر</option>
+                                    <option value="Manual Exit">خروج دستی</option>
                                 </select>
                                 {formData.outcome === 'Manual Exit' && (
-                                    <input type="number" name="manualExitPrice" step="any" placeholder="قیمت خروج" className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={formData.manualExitPrice === undefined ? '' : formData.manualExitPrice} onChange={handleChange}/>
+                                    <input type="number" step="any" min="0" placeholder="قیمت خروج دستی" value={formData.manualExitPrice || ''} onChange={e => handleInputChange('manualExitPrice', parseFloat(e.target.value))} className="w-full p-2 border rounded mt-2 dark:bg-gray-700 dark:border-gray-600" />
                                 )}
                             </div>
-                        </fieldset>}
-                        
-                        {formSettings.imageUrl?.isActive && <div className="border border-dashed dark:border-gray-600 rounded-lg p-4 text-center">
-                            {!formData.imageUrl ? (
-                                <>
-                                    <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-semibold text-indigo-600 hover:text-indigo-500">
-                                        <span>آپلود تصویر</span>
-                                        <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageUpload} />
-                                    </label>
-                                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
-                                </>
-                            ) : (
-                                <div className="relative group">
-                                    <img src={formData.imageUrl} alt="Preview" className="mx-auto max-h-40 rounded-lg" />
-                                    <button onClick={() => setFormData(p => ({...p, imageUrl: undefined}))} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="حذف تصویر">
-                                        <XCircle size={20} />
-                                    </button>
+                             )}
+                        </div>
+
+                        {/* Column 2: Analysis & Setup */}
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-md border-b pb-2 dark:border-gray-600">تحلیل و ستاپ</h3>
+                            {isFieldActive('setupId') && (<div><label className="text-sm">ستاپ معاملاتی</label><select value={formData.setupId || ''} onChange={e => onSetupChange(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>)}
+                            
+                            {isFieldActive('tags') && (<div><label className="text-sm">تگ‌ها</label><div className="p-2 border rounded mt-1 dark:border-gray-600 flex flex-wrap gap-2">{allTags.map(tag => (<button type="button" key={tag} onClick={() => handleTagClick(tag)} className={`px-2 py-1 text-xs rounded-full ${formData.tags?.includes(tag) ? 'bg-indigo-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>{tag}</button>))}<input ref={tagInputRef} onKeyDown={e => {if (e.key === 'Enter') { e.preventDefault(); handleTagClick(tagInputRef.current!.value); tagInputRef.current!.value = ''; }}} type="text" placeholder="تگ جدید..." className="bg-transparent flex-grow focus:outline-none"/></div></div>)}
+                            
+                            {isFieldActive('mistakes') && (<div><label className="text-sm">اشتباهات</label><div className="p-2 border rounded mt-1 dark:border-gray-600 flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button type="button" key={mistake} onClick={() => handleMistakeClick(mistake)} className={`px-2 py-1 text-xs rounded-full ${formData.mistakes?.includes(mistake) ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>{mistake}</button>))}</div></div>)}
+                           
+                            {isFieldActive('imageUrl') && (
+                                <div>
+                                    <label className="text-sm mb-1 block">تصویر چارت</label>
+                                    <div className="relative p-4 border-2 border-dashed rounded-lg text-center dark:border-gray-600">
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        {imagePreview ? (
+                                            <>
+                                                <img src={imagePreview} alt="Preview" className="mx-auto max-h-32 rounded" />
+                                                <button type="button" onClick={() => setImagePreview(null)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full"><X size={12} /></button>
+                                            </>
+                                        ) : ( <div className="text-gray-400"><UploadCloud className="mx-auto h-8 w-8" /><p className="text-xs mt-1">فایل را بکشید یا برای انتخاب کلیک کنید</p></div>)}
+                                    </div>
                                 </div>
                             )}
-                        </div>}
-                        
-                         <div className="border rounded-md dark:border-gray-600">
-                            <button type="button" onClick={togglePsychoAnalysis} className="flex justify-between items-center w-full p-4 text-right">
-                                <div className="flex items-center gap-2"><Brain size={18} className="text-indigo-500" /><span className="font-semibold text-sm">تحلیل روانشناسی و استراتژی (اختیاری)</span></div>
-                                <ChevronDown className={`w-5 h-5 transition-transform ${isPsychoAnalysisOpen ? 'rotate-180' : ''}`} />
-                            </button>
-                            {isPsychoAnalysisOpen && <div className="p-4 border-t dark:border-gray-600 space-y-4">
-                                {formSettings.setupId?.isActive && <div><label className="block text-sm font-medium mb-2">ستاپ معاملاتی</label><select name="setupId" value={formData.setupId || ''} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>}
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     {formSettings['psychology.emotionBefore']?.isActive && <div><label className="block text-sm font-medium mb-1">احساس قبل از ورود</label><select name="emotionBefore" value={formData.psychology?.emotionBefore || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
-                                     {formSettings['psychology.entryReason']?.isActive && <div><label className="block text-sm font-medium mb-1">انگیزه ورود</label><select name="entryReason" value={formData.psychology?.entryReason || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
-                                     {formSettings['psychology.emotionAfter']?.isActive && <div><label className="block text-sm font-medium mb-1">احساس بعد از خروج</label><select name="emotionAfter" value={formData.psychology?.emotionAfter || ''} onChange={handlePsychologyChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب کنید</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>}
-                                </div>
 
-                                {formSettings.tags?.isActive && <div>
-                                    <label className="block text-sm font-medium mb-2">تگ‌ها</label>
-                                    <div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
-                                        {formData.tags?.map(tag => (
-                                            <div key={tag} className="flex items-center gap-1 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">
-                                                {tag}
-                                                <button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button>
-                                            </div>
-                                        ))}
-                                        <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagInputKeyDown} placeholder="افزودن تگ..." className="bg-transparent focus:outline-none flex-grow" list="tag-suggestions" />
-                                        <datalist id="tag-suggestions">{allTags.filter(t => !formData.tags?.includes(t) && t.toLowerCase().includes(tagInput.toLowerCase())).map(t => <option key={t} value={t} />)}</datalist>
-                                    </div>
-                                    {suggestedTags.length > 0 && <div className="flex flex-wrap gap-1 mt-2">
-                                        <span className="text-xs text-gray-500">پیشنهاد هوشمند:</span>
-                                        {suggestedTags.map(tag => ( <button key={tag} type="button" onClick={() => handleAddTag(tag)} className="px-2 py-0.5 text-xs bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 rounded-full hover:bg-teal-200 dark:hover:bg-teal-700">{tag}</button>))}
-                                    </div>}
-                                </div>}
-                                
-                                {formSettings.mistakes?.isActive && <div><label className="block text-sm font-medium mb-2">اشتباهات</label><div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('mistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${formData.mistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div></div>}
-                                {(formSettings.notesBefore?.isActive || formSettings.notesAfter?.isActive) && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {formSettings.notesBefore?.isActive && <textarea name="notesBefore" rows={2} placeholder="یادداشت‌های قبل از معامله" value={formData.notesBefore} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>}
-                                    {formSettings.notesAfter?.isActive && <textarea name="notesAfter" rows={2} placeholder="درس‌های آموخته‌شده بعد از معامله" value={formData.notesAfter} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>}
-                                </div>}
-                            </div>}
+                        </div>
+                         {/* Column 3: Psychology */}
+                        <div className="space-y-4">
+                           <details className="border rounded-md dark:border-gray-600" open={isPsychoAnalysisOpen} onToggle={(e) => { const isOpen = (e.target as HTMLDetailsElement).open; setIsPsychoAnalysisOpen(isOpen); try { localStorage.setItem(PSYCHO_ANALYSIS_LS_KEY, isOpen.toString()); } catch (err) {} }}>
+                               <summary className="p-3 cursor-pointer font-semibold text-md list-none flex justify-between items-center">
+                                   تحلیل روانشناسی
+                                   <Brain size={18} className="text-indigo-400" />
+                               </summary>
+                               <div className="p-3 border-t dark:border-gray-600 space-y-4">
+                                   {isFieldActive('psychology.emotionBefore') && (<div><label className="text-sm">احساس قبل از ورود</label><select value={formData.psychology?.emotionBefore || ''} onChange={e => handleInputChange('psychology.emotionBefore', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('psychology.entryReason') && (<div><label className="text-sm">انگیزه ورود</label><select value={formData.psychology?.entryReason || ''} onChange={e => handleInputChange('psychology.entryReason', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('notesBefore') && (<div><label className="text-sm">یادداشت‌های قبل</label><textarea value={formData.notesBefore || ''} onChange={e => handleInputChange('notesBefore', e.target.value)} rows={3} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"></textarea></div>)}
+                                   <hr className="dark:border-gray-600"/>
+                                   {isFieldActive('psychology.emotionAfter') && (<div><label className="text-sm">احساس بعد از خروج</label><select value={formData.psychology?.emotionAfter || ''} onChange={e => handleInputChange('psychology.emotionAfter', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('notesAfter') && (<div><label className="text-sm">یادداشت‌های بعد</label><textarea value={formData.notesAfter || ''} onChange={e => handleInputChange('notesAfter', e.target.value)} rows={3} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"></textarea></div>)}
+                               </div>
+                           </details>
                         </div>
                     </div>
-                    
-                    <div className="flex justify-end gap-3 p-4 mt-auto border-t dark:border-gray-700 bg-white/5 dark:bg-gray-800/5">
+                     <div className="flex justify-end gap-3 p-4 border-t dark:border-gray-700 mt-auto bg-gray-50 dark:bg-gray-800/50 sticky bottom-0">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">انصراف</button>
-                        <button type="submit" className="flex items-center gap-2 px-4 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600 disabled:bg-gray-400" disabled={isSubmitDisabled}>
-                           <Check size={18}/> {entry ? 'ذخیره تغییرات' : 'ذخیره معامله'}
+                        <button type="submit" className="px-6 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600 flex items-center gap-2">
+                            <Check size={18} />
+                            {entry ? 'ذخیره تغییرات' : 'ثبت معامله'}
                         </button>
                     </div>
                 </form>
@@ -806,6 +810,5 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         </div>
     );
 };
-
 
 export default JournalPage;
