@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
 import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField } from '../types';
 import { addJournalEntry, getJournalEntries, deleteJournalEntry, getAllTags, getEntriesBySymbol } from '../db';
-import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info, DollarSign, Percent, BarChart2, Target, CheckCircle, Search, BookOpen } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, ChevronDown, LineChart, Sparkles, RefreshCw, Brain, Camera, UploadCloud, XCircle, Edit2, Check, ExternalLink, AlertTriangle, X, Wand2, Info, DollarSign, Percent, BarChart2, Target, CheckCircle, Search, BookOpen, Star } from 'lucide-react';
 
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
@@ -32,6 +32,15 @@ const SummaryCard: React.FC<{ title: string; value: string | number; icon: React
 };
 
 const initialFilters = { symbol: '', side: 'all', status: 'all', setupId: 'all', time: 'all' };
+
+const StarDisplay: React.FC<{ rating?: number }> = ({ rating = 0 }) => (
+    <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(i => (
+            <Star key={i} size={16} className={i <= rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'} fill={i <= rating ? 'currentColor' : 'none'} />
+        ))}
+    </div>
+);
+
 
 const JournalPage: React.FC = () => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -191,6 +200,7 @@ const JournalPage: React.FC = () => {
                             <th className="px-4 py-3">جهت</th>
                             <th className="px-4 py-3">وضعیت</th>
                             <th className="px-4 py-3">ستاپ</th>
+                            <th className="px-4 py-3">امتیاز</th>
                             <th className="px-4 py-3">R/R</th>
                             <th className="px-4 py-3">سود/ضرر</th>
                             <th className="px-4 py-3">عملیات</th>
@@ -198,7 +208,7 @@ const JournalPage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {loading ? (
-                            <tr><td colSpan={8} className="text-center py-10"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></td></tr>
+                            <tr><td colSpan={9} className="text-center py-10"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></td></tr>
                         ) : filteredEntries.length > 0 ? filteredEntries.map(entry => (
                             <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => handleOpenModal(entry)}>
                                 <td className="px-4 py-3 font-mono">{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
@@ -209,6 +219,9 @@ const JournalPage: React.FC = () => {
                                 </td>
                                 <td className="px-4 py-3">{renderStatusBadge(entry.status)}</td>
                                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
+                                <td className="px-4 py-3">
+                                    <StarDisplay rating={entry.setupRating} />
+                                </td>
                                 <td className="px-4 py-3 font-mono">{entry.riskRewardRatio?.toFixed(2) || '-'}</td>
                                 <td className={`px-4 py-3 font-mono font-bold`}>
                                     <span className={`px-2 py-1 rounded-full text-xs ${entry.profitOrLoss == null ? 'text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-900' : entry.profitOrLoss >= 0 ? 'text-green-800 dark:text-green-300 bg-green-100 dark:bg-green-900' : 'text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-900'}`}>
@@ -233,7 +246,7 @@ const JournalPage: React.FC = () => {
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={8} className="text-center py-16">
+                                <td colSpan={9} className="text-center py-16">
                                     <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
                                     <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
                                         {entries.length === 0 ? 'ژورنال شما خالی است' : 'موردی یافت نشد'}
@@ -292,6 +305,7 @@ const initialEmptyState: FormState = {
     takeProfit: undefined,
     positionSize: undefined,
     setupId: '',
+    setupRating: 0,
     tags: [],
     psychology: {},
     mistakes: [],
@@ -384,6 +398,25 @@ const RiskAnalysisHeader: React.FC<{ calculations: any; effectiveSide: 'Buy' | '
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+const StarRating: React.FC<{ rating: number; setRating: (rating: number) => void; }> = ({ rating, setRating }) => {
+    const [hoverRating, setHoverRating] = useState(0);
+    return (
+        <div className="flex items-center gap-1 mt-1" onMouseLeave={() => setHoverRating(0)}>
+            {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                    type="button"
+                    key={star}
+                    className="text-yellow-400 focus:outline-none transition-transform transform hover:scale-125"
+                    onClick={() => setRating(star === rating ? 0 : star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                >
+                    <Star size={24} fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'} />
+                </button>
+            ))}
         </div>
     );
 };
@@ -580,6 +613,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
             outcome: formData.outcome,
             setupId: formData.setupId,
             setupName: setups.find(s => s.id === formData.setupId)?.name,
+            setupRating: formData.setupRating,
             tags: formData.tags,
             mistakes: formData.mistakes,
             notesBefore: formData.notesBefore,
@@ -756,7 +790,21 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                         {/* Column 2: Analysis & Setup */}
                         <div className="space-y-4">
                             <h3 className="font-bold text-md border-b pb-2 dark:border-gray-600">تحلیل و ستاپ</h3>
-                            {isFieldActive('setupId') && (<div><label className="text-sm">ستاپ معاملاتی</label><select value={formData.setupId || ''} onChange={e => onSetupChange(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">انتخاب ستاپ</option>{setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>)}
+                            {isFieldActive('setupId') && (
+                                <div>
+                                    <label className="text-sm">ستاپ معاملاتی</label>
+                                    <select value={formData.setupId || ''} onChange={e => onSetupChange(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600">
+                                        <option value="">انتخاب ستاپ</option>
+                                        {setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                             {isFieldActive('setupId') && formData.setupId && (
+                                <div>
+                                    <label className="text-sm">امتیاز به ستاپ</label>
+                                    <StarRating rating={formData.setupRating || 0} setRating={(r) => handleInputChange('setupRating', r)} />
+                                </div>
+                            )}
                             
                             {isFieldActive('tags') && (<div><label className="text-sm">تگ‌ها</label><div className="p-2 border rounded mt-1 dark:border-gray-600 flex flex-wrap gap-2">{allTags.map(tag => (<button type="button" key={tag} onClick={() => handleTagClick(tag)} className={`px-2 py-1 text-xs rounded-full ${formData.tags?.includes(tag) ? 'bg-indigo-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>{tag}</button>))}<input ref={tagInputRef} onKeyDown={e => {if (e.key === 'Enter') { e.preventDefault(); handleTagClick(tagInputRef.current!.value); tagInputRef.current!.value = ''; }}} type="text" placeholder="تگ جدید..." className="bg-transparent flex-grow focus:outline-none"/></div></div>)}
                             

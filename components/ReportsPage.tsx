@@ -3,13 +3,22 @@ import { GoogleGenAI } from '@google/genai';
 import { marked } from 'marked';
 import { getJournalEntries } from '../db';
 import type { JournalEntry } from '../types';
-import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Tag } from 'lucide-react';
+import { RefreshCw, BarChart2, PieChart, Calendar as CalendarIcon, Target, Bot, BookOpen, AlertTriangle, Briefcase, Brain, Trophy, TrendingUp, TrendingDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Tag, Star, StarHalf } from 'lucide-react';
 
 type PerformanceByGroup = {
     [key: string]: {
         totalTrades: number;
         winRate: number;
         totalPnl: number;
+    }
+}
+
+type PerformanceByGroupWithRating = {
+    [key: string]: {
+        totalTrades: number;
+        winRate: number;
+        totalPnl: number;
+        avgRating: number;
     }
 }
 
@@ -55,23 +64,44 @@ const SkeletonLoader = () => (
     </div>
 );
 
-const StatTable: React.FC<{ data: PerformanceByGroup }> = ({ data }) => (
+const StarDisplay: React.FC<{ rating: number; total?: number }> = ({ rating = 0, total = 5 }) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5;
+    const emptyStars = total - fullStars - (halfStar ? 1 : 0);
+
+    return (
+        <div className="flex items-center gap-0.5" title={`${rating.toFixed(2)} از ${total}`}>
+            {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} size={16} className="text-yellow-400" fill="currentColor" />)}
+            {halfStar && <StarHalf key="half" size={16} className="text-yellow-400" fill="currentColor" />}
+            {[...Array(emptyStars > 0 ? emptyStars : 0)].map((_, i) => <Star key={`empty-${i}`} size={16} className="text-gray-300 dark:text-gray-600" />)}
+        </div>
+    );
+};
+
+const StatTable: React.FC<{ data: PerformanceByGroup | PerformanceByGroupWithRating, showRating?: boolean }> = ({ data, showRating = false }) => (
     <table className="w-full text-sm text-right">
         <thead className="text-xs text-gray-500 uppercase">
             <tr>
                 <th className="py-2 px-1">آیتم</th>
                 <th className="py-2 px-1 text-center">تعداد</th>
                 <th className="py-2 px-1 text-center">نرخ برد</th>
+                {showRating && <th className="py-2 px-1 text-center">میانگین امتیاز</th>}
                 <th className="py-2 px-1 text-center">سود/ضرر</th>
             </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {Object.entries(data).sort(([,a], [,b]) => b.totalPnl - a.totalPnl).map(([key, value]) => {
+                const ratingValue = (value as PerformanceByGroupWithRating['key']).avgRating;
                 return (
                 <tr key={key}>
                     <td className="py-2 px-1 font-semibold">{key}</td>
                     <td className="py-2 px-1 text-center">{value.totalTrades}</td>
                     <td className="py-2 px-1 text-center">{value.winRate.toFixed(1)}%</td>
+                    {showRating && (
+                        <td className="py-2 px-1 flex justify-center">
+                            {ratingValue > 0 ? <StarDisplay rating={ratingValue} /> : '-'}
+                        </td>
+                    )}
                     <td className={`py-2 px-1 text-center font-mono font-bold ${value.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                         ${value.totalPnl.toFixed(2)}
                     </td>
@@ -196,7 +226,37 @@ const ReportsPage: React.FC = () => {
         };
     }, [closedEntries]);
 
-    const performanceBySetup = useMemo(() => calculatePerformanceByGroup('setupName'), [closedEntries]);
+    const performanceBySetup = useMemo(() => {
+        const groups = closedEntries.reduce((acc, entry) => {
+            const groupKey = entry.setupName || 'نامشخص';
+            if (!acc[groupKey]) {
+                acc[groupKey] = { totalTrades: 0, wins: 0, totalPnl: 0, totalRating: 0, ratingCount: 0 };
+            }
+            acc[groupKey].totalTrades++;
+            acc[groupKey].totalPnl += entry.profitOrLoss!;
+            if (entry.profitOrLoss! > 0) {
+                acc[groupKey].wins++;
+            }
+            if (entry.setupRating != null && entry.setupRating > 0) {
+                acc[groupKey].totalRating += entry.setupRating;
+                acc[groupKey].ratingCount++;
+            }
+            return acc;
+        }, {} as { [key: string]: { totalTrades: number; wins: number; totalPnl: number; totalRating: number; ratingCount: number; } });
+
+        const result: PerformanceByGroupWithRating = {};
+        for (const key in groups) {
+            const group = groups[key];
+            result[key] = {
+                totalTrades: group.totalTrades,
+                totalPnl: group.totalPnl,
+                winRate: group.totalTrades > 0 ? (group.wins / group.totalTrades) * 100 : 0,
+                avgRating: group.ratingCount > 0 ? group.totalRating / group.ratingCount : 0,
+            };
+        }
+        return result;
+    }, [closedEntries]);
+    
     const performanceBySymbol = useMemo(() => calculatePerformanceByGroup('symbol'), [closedEntries]);
     const performanceByEntryReason = useMemo(() => calculatePerformanceByGroup('psychology.entryReason'), [closedEntries]);
     
@@ -366,7 +426,7 @@ const ReportsPage: React.FC = () => {
                         }
                     </AnalysisCard>
                     <AnalysisCard title="عملکرد بر اساس ستاپ" icon={Target} isLoading={loading}>
-                        <StatTable data={performanceBySetup} />
+                        <StatTable data={performanceBySetup} showRating={true} />
                     </AnalysisCard>
                      <AnalysisCard title="عملکرد بر اساس نماد" icon={Briefcase} isLoading={loading}>
                         <StatTable data={performanceBySymbol} />

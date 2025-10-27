@@ -38,6 +38,7 @@ export interface JournalEntry {
     status?: 'Win' | 'Loss' | 'Breakeven';
     setupId?: string;
     setupName?: string;
+    setupRating?: number;
     tags?: string[];
     mistakes?: string[];
     notesBefore?: string;
