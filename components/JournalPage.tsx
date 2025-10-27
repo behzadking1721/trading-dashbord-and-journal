@@ -662,7 +662,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
 
         let riskPercentToUse = riskSettings.fixedPercent.risk;
         if (riskSettings.strategy === 'anti_martingale') {
-            // FIX: Corrected property access from anti_martingale to antiMartingale
             const { baseRisk, increment, maxRisk } = riskSettings.antiMartingale;
             riskPercentToUse = Math.min(baseRisk + (winStreak * increment), maxRisk);
         }
@@ -673,8 +672,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
         if (formData.entryPrice && formData.stopLoss && effectiveSide) {
             const riskPips = Math.abs(formData.entryPrice - formData.stopLoss);
             if (riskPips > 0) {
-                 const pipValue = 10; // Assuming standard lot on majors ~ $10/pip
-                 const lotSize = riskAmount / (riskPips * 100000 / pipValue);
+                 const lotSize = riskAmount / (riskPips * 100000);
                  handleInputChange('positionSize', parseFloat(lotSize.toFixed(2)));
 
                  const rewardPips = riskPips * rr;
