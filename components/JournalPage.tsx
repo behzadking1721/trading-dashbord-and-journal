@@ -90,7 +90,7 @@ const JournalPage: React.FC = () => {
                 const entryDate = new Date(entry.date);
                 const days = { '7d': 7, '30d': 30, '90d': 90 }[filters.time as '7d' | '30d' | '90d'];
                 if (days) {
-                    const filterDate = new Date(now.setDate(now.getDate() - days));
+                    const filterDate = new Date(new Date().setDate(now.getDate() - days));
                     timeMatch = entryDate >= filterDate;
                 }
             }
