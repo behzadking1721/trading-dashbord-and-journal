@@ -210,8 +210,8 @@ const JournalPage: React.FC = () => {
                                 <td className="px-4 py-3">{renderStatusBadge(entry.status)}</td>
                                 <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{entry.setupName || '-'}</td>
                                 <td className="px-4 py-3 font-mono">{entry.riskRewardRatio?.toFixed(2) || '-'}</td>
-                                <td className={`px-4 py-3 font-mono font-bold ${entry.profitOrLoss == null ? 'text-blue-500' : entry.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    <span className={`px-2 py-1 rounded ${entry.profitOrLoss == null ? '' : entry.profitOrLoss >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                <td className={`px-4 py-3 font-mono font-bold`}>
+                                    <span className={`px-2 py-1 rounded-full text-xs ${entry.profitOrLoss == null ? 'text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-900' : entry.profitOrLoss >= 0 ? 'text-green-800 dark:text-green-300 bg-green-100 dark:bg-green-900' : 'text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-900'}`}>
                                         {entry.profitOrLoss != null ? `$${entry.profitOrLoss.toFixed(2)}` : 'باز'}
                                     </span>
                                 </td>
@@ -282,6 +282,7 @@ interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
 
 const DRAFT_KEY = 'journal_form_draft';
 const STORAGE_KEY_FORM_SETTINGS = 'journal-form-settings';
+const STORAGE_KEY_RISK_SETTINGS = 'risk-management-settings';
 
 const initialEmptyState: FormState = {
     date: new Date().toISOString(),
@@ -355,6 +356,18 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const [allTags, setAllTags] = useState<string[]>([]);
     const [slSuggestion, setSlSuggestion] = useState<number | null>(null);
 
+    const loadRiskSettings = useCallback(() => {
+        try {
+            const savedRiskSettings = localStorage.getItem(STORAGE_KEY_RISK_SETTINGS);
+            if (savedRiskSettings) {
+                setRiskSettings(JSON.parse(savedRiskSettings));
+            } else {
+                const defaultSettings: RiskSettings = { accountBalance: 10000, strategy: 'fixed_percent', fixedPercent: { risk: 1 }, antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }};
+                setRiskSettings(defaultSettings);
+            }
+        } catch (e) { console.error("Could not load risk settings:", e); }
+    }, []);
+
     useEffect(() => {
         const loadInitialData = async () => {
              try {
@@ -364,13 +377,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 const savedSetups = localStorage.getItem('trading-setups');
                 if (savedSetups) setSetups(JSON.parse(savedSetups));
                 
-                const savedRiskSettings = localStorage.getItem('risk-management-settings');
-                 if (savedRiskSettings) {
-                    setRiskSettings(JSON.parse(savedRiskSettings));
-                } else {
-                    const defaultSettings: RiskSettings = { accountBalance: 10000, strategy: 'fixed_percent', fixedPercent: { risk: 1 }, antiMartingale: { baseRisk: 1, increment: 0.5, maxRisk: 4 }};
-                    setRiskSettings(defaultSettings);
-                }
+                loadRiskSettings();
+
                 const existingTags = await getAllTags();
                 setAllTags(existingTags);
             } catch(e) { console.error(e) }
@@ -383,8 +391,19 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e);
         }
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === STORAGE_KEY_RISK_SETTINGS) {
+                loadRiskSettings();
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('storage', handleStorageChange);
+        }
+    }, [loadRiskSettings]);
 
     useEffect(() => {
         const initialState = getInitialState();
