@@ -55,6 +55,8 @@ const AnalysisBarChart: React.FC<{ data: { [key: string]: number } }> = ({ data 
 };
 
 type TimeFilter = 'all' | '90d' | '30d' | '7d';
+const SESSION_STORAGE_KEY_FILTERS = 'performance-analytics-filters';
+
 
 const PerformanceAnalyticsPage: React.FC = () => {
     const [allEntries, setAllEntries] = useState<JournalEntry[]>([]);
@@ -66,9 +68,20 @@ const PerformanceAnalyticsPage: React.FC = () => {
     const { theme } = useContext(ThemeContext);
 
     // Filters
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
-    const [symbolFilter, setSymbolFilter] = useState<string>('all');
-    const [setupFilter, setSetupFilter] = useState<string>('all');
+    const [filters, setFilters] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem(SESSION_STORAGE_KEY_FILTERS);
+            return saved ? JSON.parse(saved) : { time: 'all', symbol: 'all', setup: 'all' };
+        } catch (error) {
+            console.error("Failed to load performance filters from session storage", error);
+            return { time: 'all', symbol: 'all', setup: 'all' };
+        }
+    });
+    const { time: timeFilter, symbol: symbolFilter, setup: setupFilter } = filters;
+
+    const handleFilterChange = <K extends keyof typeof filters>(key: K, value: typeof filters[K]) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -92,6 +105,14 @@ const PerformanceAnalyticsPage: React.FC = () => {
         return () => window.removeEventListener('journalUpdated', loadData);
     }, [loadData]);
 
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(SESSION_STORAGE_KEY_FILTERS, JSON.stringify(filters));
+        } catch (error) {
+            console.error("Failed to save performance filters to session storage", error);
+        }
+    }, [filters]);
+
     const { filteredEntries, availableSymbols } = useMemo(() => {
         const symbols = new Set<string>();
         allEntries.forEach(e => e.symbol && symbols.add(e.symbol));
@@ -103,7 +124,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
             if (timeFilter !== 'all') {
                 const now = new Date();
                 const entryDate = new Date(entry.date);
-                const days = { '7d': 7, '30d': 30, '90d': 90 }[timeFilter];
+                const days = { '7d': 7, '30d': 30, '90d': 90 }[timeFilter as '7d' | '30d' | '90d'];
                 if (days) {
                     const filterDate = new Date(new Date().setDate(now.getDate() - days));
                     if(entryDate < filterDate) return false;
@@ -198,11 +219,9 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             // FIX: The user's environment reports that 'addAreaSeries' does not exist.
-             // Switching to 'addSeries' as suggested by the error message, and casting the result
-             // to match the expected modern series API type. This might be necessary due to
-             // conflicting library versions or type definitions.
-             seriesRef.current = (chartRef.current as any).addSeries('Area') as ISeriesApi<'Area'>;
+             // FIX: The error indicates `addAreaSeries` does not exist on `IChartApi` and suggests `addSeries`.
+             // This might be due to a specific version of the library (e.g., a pre-release) that used this alternative API.
+             seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
         const isDark = theme !== 'light';
@@ -225,7 +244,6 @@ const PerformanceAnalyticsPage: React.FC = () => {
         chartRef.current.timeScale().fitContent();
 
         // High-water mark and drawdown lines
-        // FIX: The `clearPriceLines` method does not exist. The correct way is to get all price lines and remove them individually.
         seriesRef.current!.priceLines().forEach(line => seriesRef.current!.removePriceLine(line));
         if(peakEquityData.value > firstValue) {
              seriesRef.current!.createPriceLine({ price: peakEquityData.value, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'اوج سرمایه' });
@@ -277,8 +295,8 @@ const PerformanceAnalyticsPage: React.FC = () => {
                             <div>
                                 <label className="text-sm font-medium">بازه زمانی</label>
                                  <div className="flex items-center p-1 rounded-lg bg-gray-200 dark:bg-gray-700/50 mt-1">
-                                    {(['all', '90d', '30d', '7d'] as TimeFilter[]).map(f => (
-                                        <button key={f} onClick={() => setTimeFilter(f)} className={`flex-1 px-2 py-1 text-xs font-semibold rounded-md transition-colors ${timeFilter === f ? 'bg-white dark:bg-gray-800 shadow text-indigo-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                                    {(['all', '90d', '30d', '7d'] as const).map(f => (
+                                        <button key={f} onClick={() => handleFilterChange('time', f)} className={`flex-1 px-2 py-1 text-xs font-semibold rounded-md transition-colors ${timeFilter === f ? 'bg-white dark:bg-gray-800 shadow text-indigo-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
                                             {{'all': 'همه', '90d': '۹۰ روز', '30d': '۳۰ روز', '7d': '۷ روز'}[f]}
                                         </button>
                                     ))}
@@ -286,14 +304,14 @@ const PerformanceAnalyticsPage: React.FC = () => {
                             </div>
                              <div>
                                 <label htmlFor="symbolFilter" className="text-sm font-medium">نماد</label>
-                                <select id="symbolFilter" value={symbolFilter} onChange={e => setSymbolFilter(e.target.value)} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <select id="symbolFilter" value={symbolFilter} onChange={e => handleFilterChange('symbol', e.target.value)} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm">
                                     <option value="all">همه نمادها</option>
                                     {availableSymbols.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                              <div>
                                 <label htmlFor="setupFilter" className="text-sm font-medium">ستاپ معاملاتی</label>
-                                <select id="setupFilter" value={setupFilter} onChange={e => setSetupFilter(e.target.value)} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <select id="setupFilter" value={setupFilter} onChange={e => handleFilterChange('setup', e.target.value)} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm">
                                     <option value="all">همه ستاپ‌ها</option>
                                      {setups.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>

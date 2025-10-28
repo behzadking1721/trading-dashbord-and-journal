@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField } from '../../types';
+import type { JournalEntry, TradingSetup, TradeOutcome, RiskSettings, EmotionBefore, EntryReason, EmotionAfter, JournalFormSettings, JournalFormField, PsychologyOptions } from '../../types';
 import { addJournalEntry, getJournalEntries, getAllTags } from '../../db';
 import { Wand2, Info, XCircle, Brain, Star, UploadCloud, X, Check } from 'lucide-react';
 
 const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
-const EMOTIONS_BEFORE: EmotionBefore[] = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
-const ENTRY_REASONS: EntryReason[] = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
-const EMOTIONS_AFTER: EmotionAfter[] = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
+const PSYCHOLOGY_OPTIONS_KEY = 'psychology-options';
+const DEFAULT_PSYCHOLOGY_OPTIONS: PsychologyOptions = {
+    emotionsBefore: ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'],
+    entryReasons: ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'],
+    emotionsAfter: ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'],
+};
+
 
 interface FormState extends Omit<Partial<JournalEntry>, 'outcome'> {
     outcome?: TradeOutcome;
@@ -195,6 +199,8 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const [imagePreview, setImagePreview] = useState<string | null>(entry?.imageUrl || null);
     const [isSmartEntryOpen, setIsSmartEntryOpen] = useState(false);
     const [winStreak, setWinStreak] = useState(0);
+    const [psychologyOptions, setPsychologyOptions] = useState<PsychologyOptions>(DEFAULT_PSYCHOLOGY_OPTIONS);
+
 
     const effectiveSide = useMemo(() => {
         if (formData.entryPrice != null && formData.stopLoss != null) {
@@ -257,6 +263,10 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 // Load Risk Settings
                 updateRiskSettings();
                 
+                // Load Psychology Options
+                const savedPsychoOptions = localStorage.getItem(PSYCHOLOGY_OPTIONS_KEY);
+                if (savedPsychoOptions) setPsychologyOptions(JSON.parse(savedPsychoOptions));
+
                 // Load all tags for suggestions
                 const tags = await getAllTags();
                 setAllTags(tags);
@@ -554,11 +564,11 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                                    <Brain size={18} className="text-indigo-400" />
                                </summary>
                                <div className="p-3 border-t dark:border-gray-600 space-y-4">
-                                   {isFieldActive('psychology.emotionBefore') && (<div><label className="text-sm">احساس قبل از ورود</label><select value={formData.psychology?.emotionBefore || ''} onChange={e => handleInputChange('psychology.emotionBefore', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{EMOTIONS_BEFORE.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
-                                   {isFieldActive('psychology.entryReason') && (<div><label className="text-sm">انگیزه ورود</label><select value={formData.psychology?.entryReason || ''} onChange={e => handleInputChange('psychology.entryReason', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{ENTRY_REASONS.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('psychology.emotionBefore') && (<div><label className="text-sm">احساس قبل از ورود</label><select value={formData.psychology?.emotionBefore || ''} onChange={e => handleInputChange('psychology.emotionBefore', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{psychologyOptions.emotionsBefore.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('psychology.entryReason') && (<div><label className="text-sm">انگیزه ورود</label><select value={formData.psychology?.entryReason || ''} onChange={e => handleInputChange('psychology.entryReason', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{psychologyOptions.entryReasons.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
                                    {isFieldActive('notesBefore') && (<div><label className="text-sm">یادداشت‌های قبل</label><textarea value={formData.notesBefore || ''} onChange={e => handleInputChange('notesBefore', e.target.value)} rows={3} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"></textarea></div>)}
                                    <hr className="dark:border-gray-600"/>
-                                   {isFieldActive('psychology.emotionAfter') && (<div><label className="text-sm">احساس بعد از خروج</label><select value={formData.psychology?.emotionAfter || ''} onChange={e => handleInputChange('psychology.emotionAfter', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{EMOTIONS_AFTER.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
+                                   {isFieldActive('psychology.emotionAfter') && (<div><label className="text-sm">احساس بعد از خروج</label><select value={formData.psychology?.emotionAfter || ''} onChange={e => handleInputChange('psychology.emotionAfter', e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"><option value="">-</option>{psychologyOptions.emotionsAfter.map(e => <option key={e} value={e}>{e}</option>)}</select></div>)}
                                    {isFieldActive('notesAfter') && (<div><label className="text-sm">یادداشت‌های بعد</label><textarea value={formData.notesAfter || ''} onChange={e => handleInputChange('notesAfter', e.target.value)} rows={3} className="w-full p-2 border rounded mt-1 dark:bg-gray-700 dark:border-gray-600"></textarea></div>)}
                                </div>
                            </details>

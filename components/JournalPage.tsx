@@ -30,6 +30,8 @@ const SummaryCard: React.FC<{ title: string; value: string | number; icon: React
 };
 
 const initialFilters = { symbol: '', side: 'all', status: 'all', setupId: 'all', time: 'all' };
+const SESSION_STORAGE_KEY_FILTERS = 'journal-page-filters';
+
 
 const StarDisplay: React.FC<{ rating?: number }> = ({ rating = 0 }) => (
     <div className="flex items-center gap-0.5">
@@ -44,7 +46,15 @@ const JournalPage: React.FC<JournalPageProps> = ({ onOpenModal }) => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
-    const [filters, setFilters] = useState(initialFilters);
+    const [filters, setFilters] = useState(() => {
+        try {
+            const savedFilters = sessionStorage.getItem(SESSION_STORAGE_KEY_FILTERS);
+            return savedFilters ? JSON.parse(savedFilters) : initialFilters;
+        } catch (error) {
+            console.error("Failed to load journal filters from session storage", error);
+            return initialFilters;
+        }
+    });
     const [setups, setSetups] = useState<TradingSetup[]>([]);
 
     const loadEntries = useCallback(async () => {
@@ -68,6 +78,16 @@ const JournalPage: React.FC<JournalPageProps> = ({ onOpenModal }) => {
         window.addEventListener('journalUpdated', loadEntries);
         return () => window.removeEventListener('journalUpdated', loadEntries);
     }, [loadEntries]);
+
+    // Save filters to session storage on change
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(SESSION_STORAGE_KEY_FILTERS, JSON.stringify(filters));
+        } catch (error) {
+            console.error("Failed to save journal filters to session storage", error);
+        }
+    }, [filters]);
+
 
     const summaryStats = useMemo(() => {
         const closedTrades = entries.filter(e => e.status);

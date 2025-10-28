@@ -17,9 +17,15 @@ export interface EconomicEvent {
 
 export type TradeOutcome = 'Take Profit' | 'Stop Loss' | 'Manual Exit';
 
-export type EmotionBefore = 'مطمئن' | 'مضطرب' | 'هیجانی' | 'منظم';
-export type EmotionAfter = 'رضایت' | 'پشیمانی' | 'شک' | 'هیجان‌زده';
-export type EntryReason = 'ستاپ تکنیکال' | 'خبر' | 'دنبال کردن ترند' | 'ترس از دست دادن (FOMO)' | 'انتقام';
+export type EmotionBefore = string;
+export type EmotionAfter = string;
+export type EntryReason = string;
+
+export interface PsychologyOptions {
+    emotionsBefore: string[];
+    entryReasons: string[];
+    emotionsAfter: string[];
+}
 
 
 export interface JournalEntry {

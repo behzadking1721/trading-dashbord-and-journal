@@ -54,6 +54,8 @@ const downloadICSFile = (event: MarketEvent) => {
 
 const IMPACT_LEVELS: MarketEvent['impact'][] = ['High', 'Medium', 'Low'];
 type TimeFilter = 'today' | 'week' | 'all';
+const initialFilters = { search: '', impact: [] as MarketEvent['impact'][], country: '', time: 'today' as TimeFilter };
+
 
 const tabColorClasses: { [key: string]: { border: string, text: string, bg: string, ring: string } } = {
     blue: { border: 'border-blue-500', text: 'text-blue-500', bg: 'bg-blue-500', ring: 'focus:ring-blue-500' },
@@ -192,7 +194,16 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [countdown, setCountdown] = useState(REFRESH_INTERVAL_MS);
-    const [filters, setFilters] = useState({ search: '', impact: [] as MarketEvent['impact'][], country: '', time: 'today' as TimeFilter });
+    const FILTERS_SESSION_KEY = `calendar_filters_${market}`;
+    const [filters, setFilters] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem(FILTERS_SESSION_KEY);
+            return saved ? JSON.parse(saved) : initialFilters;
+        } catch (e) {
+            console.error(`Failed to load filters for ${market}`, e);
+            return initialFilters;
+        }
+    });
     const [countries, setCountries] = useState<string[]>([]);
     
     const PINNED_EVENTS_LS_KEY = `pinned_events_${market}`;
@@ -241,6 +252,15 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
             clearInterval(countdownTimer);
         };
     }, [loadData]);
+    
+    useEffect(() => {
+        try {
+            // Save filters to session storage on change for this market tab
+            sessionStorage.setItem(FILTERS_SESSION_KEY, JSON.stringify(filters));
+        } catch (e) {
+            console.error(`Failed to save filters for ${market}`, e);
+        }
+    }, [filters, FILTERS_SESSION_KEY]);
 
     const filteredEvents = useMemo(() => {
         const now = new Date();
