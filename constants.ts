@@ -2,7 +2,7 @@ import React from 'react';
 import { lazy } from 'react';
 import {
     LineChart, Flame, Globe, History, ShieldAlert,
-    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen
+    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen, Calendar
 } from 'lucide-react';
 import type { JournalFormField } from './types';
 
@@ -17,19 +17,23 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
   wallet_overview: lazy(() => import('./components/widgets/WalletOverviewWidget')),
   weather: lazy(() => import('./components/widgets/WeatherWidget')),
   hafez_fortune: lazy(() => import('./components/widgets/HafezFortuneWidget')),
+  live_prices: lazy(() => import('./components/widgets/LivePricesWidget')),
+  todays_performance: lazy(() => import('./components/widgets/TodaysPerformanceWidget')),
 };
 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
   market_news: { title: 'اخبار بازار', icon: Flame, description: 'اخبار لحظه‌ای بازارهای فارکس، کریپتو و بورس.' },
   sessions_clock: { title: 'سشن‌های معاملاتی', icon: Globe, description: 'وضعیت بازارهای جهانی و ساعت سشن‌ها.' },
-  trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورناال.' },
+  trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورنال.' },
   risk_management: { title: 'مدیریت ریسک', icon: ShieldAlert, description: 'تحلیل ریسک فعال و توزیع نمادها.' },
-  performance_analytics: { title: 'تحلیل عملکرد', icon: TrendingUp, description: 'شاخص‌های کلیدی عملکرد مانند نرخ برد و R/R.' },
+  performance_analytics: { title: 'تحلیل عملکرد کلی', icon: TrendingUp, description: 'شاخص‌های کلیدی عملکرد مانند نرخ برد و R/R.' },
   trading_checklist: { title: 'چک‌لیست ترید', icon: ListChecks, description: 'چک‌لیست ستاپ معاملاتی فعال شما.' },
   ai_summary: { title: 'تحلیل هوشمند بازار', icon: Sparkles, description: 'دریافت خلاصه‌ای از وضعیت بازار با کمک هوش مصنوعی.' },
   wallet_overview: { title: 'نمای کلی کیف پول', icon: Wallet, description: 'نمایش موجودی و سرمایه کل حساب.' },
   weather: { title: 'وضعیت آب و هوا', icon: CloudSun, description: 'نمایش وضعیت آب و هوای فعلی موقعیت شما.' },
   hafez_fortune: { title: 'فال حافظ', icon: BookOpen, description: 'یک غزل از دیوان حافظ برای الهام روزانه.' },
+  live_prices: { title: 'قیمت‌های زنده', icon: LineChart, description: 'نمایش لحظه‌ای قیمت دارایی‌های منتخب.' },
+  todays_performance: { title: 'عملکرد امروز', icon: Calendar, description: 'خلاصه‌ای از عملکرد معاملاتی شما در روز جاری.' },
 };
 
 

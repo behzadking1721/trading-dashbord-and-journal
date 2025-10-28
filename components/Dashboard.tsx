@@ -21,9 +21,9 @@ const getFromLS = (key: string, defaultValue: any) => {
 };
 
 // Define which widgets belong to which column
-const leftColumnWidgets = ['wallet_overview', 'performance_analytics', 'risk_management', 'trading_checklist'];
+const leftColumnWidgets = ['todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management', 'trading_checklist'];
 const middleColumnWidgets = ['trades_table'];
-const rightColumnWidgets = ['sessions_clock', 'market_news', 'hafez_fortune', 'ai_summary', 'weather'];
+const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'hafez_fortune', 'ai_summary', 'weather'];
 
 const Dashboard: React.FC = () => {
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
@@ -33,8 +33,8 @@ const Dashboard: React.FC = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
             const defaultVisibleWidgets = [
-                'performance_analytics', 'wallet_overview', 'risk_management',
-                'trades_table', 'sessions_clock', 'trading_checklist', 'market_news',
+                'todays_performance', 'performance_analytics', 'wallet_overview', 'risk_management',
+                'trades_table', 'sessions_clock', 'live_prices', 'trading_checklist', 'market_news',
                 'hafez_fortune',
             ];
 
