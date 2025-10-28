@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, Edit3, RefreshCw, SlidersHorizontal, Brain, Clock, AlertTriangle, Palette, Shield } from 'lucide-react';
 import type { TradingSetup, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField, PsychologyOptions, SettingsTab, AccentColor } from '../../types';
-import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../constants';
+import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../../constants';
 import { getJournalEntries, addJournalEntry, deleteJournalEntry } from '../../db';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAppContext } from '../contexts/AppContext';
@@ -83,6 +83,9 @@ const SettingsPage: React.FC = () => {
     const { addNotification } = useNotification();
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+
 
     useEffect(() => {
         try {
@@ -124,7 +127,25 @@ const SettingsPage: React.FC = () => {
     const handleExport = async () => { setIsExporting(true); try { const entries = await getJournalEntries(); if (entries.length === 0) { addNotification('هیچ معامله‌ای برای خروجی گرفتن وجود ندارد.', 'info'); return; } const jsonString = JSON.stringify(entries, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const href = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = href; const date = new Date().toISOString().split('T')[0]; link.download = `trading_journal_backup_${date}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(href); addNotification('داده‌های ژورنال با موفقیت استخراج شد.', 'success'); } catch (error) { console.error("Export failed:", error); addNotification('خطا در خروجی گرفتن از داده‌ها.', 'error'); } finally { setIsExporting(false); }};
     const handleImportClick = () => { fileInputRef.current?.click(); };
     const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setIsImporting(true); const reader = new FileReader(); reader.onload = async (e) => { try { const text = e.target?.result; if (typeof text !== 'string') throw new Error('File content is not readable.'); const data = JSON.parse(text); if (!Array.isArray(data) || data.some(item => typeof item.id !== 'string' || typeof item.date !== 'string')) throw new Error('فایل نامعتبر است یا فرمت درستی ندارد.'); for (const entry of data as JournalEntry[]) { await addJournalEntry(entry); } addNotification(`${data.length} معامله با موفقیت وارد شد.`, 'success'); } catch (error: any) { console.error("Import failed:", error); addNotification(error.message || 'خطا در وارد کردن فایل.', 'error'); } finally { setIsImporting(false); if(event.target) event.target.value = ''; } }; reader.onerror = () => { addNotification('خطا در خواندن فایل.', 'error'); setIsImporting(false); }; reader.readAsText(file); };
-    const handleDeleteAllData = async () => { const confirmation = prompt('برای تایید حذف تمام داده‌های ژورنال، عبارت "حذف" را وارد کنید.'); if (confirmation === 'حذف') { try { const entries = await getJournalEntries(); for (const entry of entries) { await deleteJournalEntry(entry.id); } addNotification('تمام داده‌های ژورنال با موفقیت پاک شد.', 'success'); } catch (error) { addNotification('خطا در پاک کردن داده‌ها.', 'error'); } } else { addNotification('عملیات حذف لغو شد.', 'info'); }};
+    
+    const handleConfirmDeleteAllData = async () => {
+        if (deleteConfirmationText !== 'حذف') {
+            addNotification('متن تایید اشتباه است.', 'error');
+            return;
+        }
+        try {
+            const entries = await getJournalEntries();
+            for (const entry of entries) {
+                await deleteJournalEntry(entry.id);
+            }
+            addNotification('تمام داده‌های ژورنال با موفقیت پاک شد.', 'success');
+        } catch (error) {
+            addNotification('خطا در پاک کردن داده‌ها.', 'error');
+        } finally {
+            setIsDeleteModalOpen(false);
+            setDeleteConfirmationText('');
+        }
+    };
     
     const renderDefaultValueInput = (field: typeof JOURNAL_FORM_FIELDS[0]) => { const setting = formSettings[field.id]; const isNotConfigurable = field.type === 'special' || ['tags', 'mistakes', 'notesBefore', 'notesAfter', 'imageUrl'].includes(field.id); if (!setting || !setting.isActive || isNotConfigurable) return <div className="w-full h-9 bg-gray-100 dark:bg-gray-700/50 rounded-md" title="این فیلد مقدار پیش‌فرض ندارد"></div>; const commonProps = { value: setting.defaultValue ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => handleFormSettingChange(field.id, 'defaultValue', e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value), className: "w-full p-2 border rounded text-xs dark:bg-gray-700 dark:border-gray-600", placeholder: field.placeholder, }; if (field.type === 'select') { let options: {value: string, label: string}[] = []; if (field.id === 'setupId') options = setups.map(s => ({ value: s.id, label: s.name })); if (field.id === 'psychology.emotionBefore') options = psychologyOptions.emotionsBefore.map(e => ({ value: e, label: e })); if (field.id === 'psychology.entryReason') options = psychologyOptions.entryReasons.map(e => ({ value: e, label: e })); if (field.id === 'psychology.emotionAfter') options = psychologyOptions.emotionsAfter.map(e => ({ value: e, label: e })); return ( <select {...commonProps}> <option value="">پیش‌فرض ندارد</option> {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)} </select> ); } return <input type={field.type} step="any" {...commonProps} />; };
     
@@ -248,7 +269,7 @@ const SettingsPage: React.FC = () => {
                 </Card>
                 <Card title="ناحیه خطر" icon={AlertTriangle}>
                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">این عملیات غیرقابل بازگشت هستند. لطفا با احتیاط کامل اقدام کنید.</p>
-                     <button onClick={handleDeleteAllData} className="w-full bg-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                     <button onClick={() => setIsDeleteModalOpen(true)} className="w-full bg-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors">
                         پاک کردن تمام داده‌های ژورنال
                     </button>
                 </Card>
@@ -280,6 +301,47 @@ const SettingsPage: React.FC = () => {
                 <Suspense fallback={null}>
                     <SetupFormModal setup={editingSetup} onSave={handleSaveSetup} onClose={() => setEditingSetup(null)} />
                 </Suspense>
+            )}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setIsDeleteModalOpen(false)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 text-center">
+                            <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
+                            <h3 className="mt-4 text-lg font-bold">آیا کاملاً مطمئن هستید؟</h3>
+                            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                <p>این عمل تمام داده‌های ژورنال شما را برای همیشه پاک می‌کند. این داده‌ها به هیچ وجه قابل بازیابی نخواهند بود.</p>
+                                <p className="mt-4 font-semibold">برای تایید، لطفاً عبارت <strong className="font-mono text-red-600 dark:text-red-400">حذف</strong> را در کادر زیر وارد کنید.</p>
+                            </div>
+                            <input
+                                type="text"
+                                value={deleteConfirmationText}
+                                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                className="w-full p-2 mt-4 border rounded text-center dark:bg-gray-700 dark:border-gray-600"
+                                aria-label="متن تایید حذف"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    setDeleteConfirmationText('');
+                                }}
+                                className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500"
+                            >
+                                انصراف
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDeleteAllData}
+                                disabled={deleteConfirmationText !== 'حذف'}
+                                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                تایید و حذف
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
