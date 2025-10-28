@@ -1,7 +1,9 @@
 import type { MarketEvent } from '../types';
 
-// The new, reliable JSON endpoint provided by the user.
-const JSON_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=ecf12feb3895649f700076a2b3ef16f5';
+// Original data source URL
+const ORIGINAL_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=ecf12feb3895649f700076a2b3ef16f5';
+// Using a reliable CORS proxy to bypass browser security restrictions.
+const PROXY_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(ORIGINAL_URL)}`;
 
 const currencyToCountryCode: { [key: string]: string } = {
     USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', CAD: 'CA', AUD: 'AU', NZD: 'NZ', CHF: 'CH', CNY: 'CN',
@@ -18,9 +20,9 @@ const parseImpact = (impact: string): MarketEvent['impact'] => {
 
 export const fetchForexEvents = async (): Promise<MarketEvent[]> => {
     try {
-        const response = await fetch(JSON_URL);
+        const response = await fetch(PROXY_URL);
         if (!response.ok) {
-            throw new Error(`Failed to fetch calendar data: ${response.statusText}`);
+            throw new Error(`Failed to fetch calendar data via proxy: ${response.statusText}`);
         }
         const jsonData: any[] = await response.json();
 
