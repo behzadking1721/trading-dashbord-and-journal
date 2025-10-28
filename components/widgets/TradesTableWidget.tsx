@@ -7,11 +7,11 @@ const SkeletonLoader = () => (
     <tbody className="animate-pulse">
         {[...Array(3)].map((_, i) => (
             <tr key={i} className="border-b dark:border-gray-700">
-                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
-                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div></td>
-                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
-                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
-                <td className="px-4 py-3"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div></td>
+                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
             </tr>
         ))}
     </tbody>
@@ -95,14 +95,14 @@ const TradesTableWidget: React.FC = () => {
                         <tbody>
                             {tradesToShow.length > 0 ? tradesToShow.map(trade => (
                                 <tr key={trade.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                                    <td className="px-4 py-2 font-medium">{trade.symbol || '-'}</td>
-                                    <td className={`px-4 py-2 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
+                                    <td className="px-4 py-1.5 font-medium">{trade.symbol || '-'}</td>
+                                    <td className={`px-4 py-1.5 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
                                         {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : trade.side === 'Sell' ? <ArrowDownCircle size={14} /> : null}
                                         {trade.side === 'Buy' ? 'خرید' : trade.side === 'Sell' ? 'فروش' : '-'}
                                     </td>
-                                    <td className="px-4 py-2 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
-                                    <td className="px-4 py-2 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
-                                    <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <td className="px-4 py-1.5 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
+                                    <td className="px-4 py-1.5 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
+                                    <td className={`px-4 py-1.5 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {trade.profitOrLoss != null ? formatNumber(trade.profitOrLoss, 2, '$') : <span className="text-xs text-blue-500">باز</span>}
                                     </td>
                                 </tr>

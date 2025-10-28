@@ -8,7 +8,7 @@ interface CardProps {
 
 const Card: React.FC<CardProps> = ({ title, children, icon: Icon }) => {
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl shadow-lg bg-white/20 dark:bg-slate-800/30 glass-card transition-colors duration-300 overflow-hidden border border-white/30 dark:border-slate-700/50">
+    <div className="w-full flex flex-col rounded-2xl shadow-lg bg-white/20 dark:bg-slate-800/30 glass-card transition-colors duration-300 overflow-hidden border border-white/30 dark:border-slate-700/50">
       <div className="flex items-center justify-between p-3 border-b border-black/10 dark:border-white/10">
         <div className="flex items-center gap-2">
             {Icon && <Icon className="w-4 h-4 text-gray-700 dark:text-gray-300" />}
