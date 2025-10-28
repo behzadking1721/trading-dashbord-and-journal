@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { createChart, IChartApi, ISeriesApi, Time, PriceLineOptions, AreaData, WhitespaceData, AreaSeriesOptions, DeepPartial, AreaStyleOptions, SeriesOptionsCommon } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { getJournalEntries } from '../../db';
 import type { JournalEntry, TradingSetup } from '../../types';
 import { useAppContext } from '../contexts/AppContext';
@@ -200,10 +200,12 @@ const PerformanceAnalyticsPage: React.FC = () => {
 
     useEffect(() => {
         const chartContainer = chartContainerRef.current;
-        if (!chartContainer || !performanceData) {
-            if(chartContainer) {
-                chartContainer.innerHTML = '';
-            }
+        if (!chartContainer) return;
+
+        // --- Robust redraw logic ---
+        // Clear previous chart instance completely before creating a new one.
+        chartContainer.innerHTML = '';
+        if (!performanceData) {
             return;
         }
 
@@ -220,8 +222,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
             grid: { vertLines: { color: 'transparent' }, horzLines: { color: isDark ? '#374151' : '#e5e7eb' } },
         });
 
-        // FIX: The type definitions for lightweight-charts might be incomplete in this environment.
-        // The 'addAreaSeries' method is standard, so casting to 'any' bypasses the incorrect TypeScript error.
+        // The type definitions might be incorrect in this environment. Casting to `any` to ensure it works.
         const areaSeries = (chart as any).addAreaSeries();
         const { equityData, peakEquityData } = performanceData;
         const lastValue = equityData[equityData.length - 1]?.value ?? 0;
