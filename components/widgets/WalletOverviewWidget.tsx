@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { getJournalEntries } from '../../db';
 
 const SkeletonLoader = () => (
-    <div className="animate-pulse space-y-2.5">
-        {[...Array(3)].map((_, i) => (
+    <div className="animate-pulse space-y-3">
+        {[...Array(2)].map((_, i) => (
             <div key={i} className="flex justify-between items-center">
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
                 <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/3"></div>
             </div>
         ))}
+         <div className="h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full w-full mt-4"></div>
     </div>
 );
 
@@ -57,24 +58,36 @@ const WalletOverviewWidget: React.FC = () => {
     }, []);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
     }
+    
+    const equityToBalanceRatio = balance > 0 ? (equity / balance) * 100 : 0;
+    const pnlPercent = balance > 0 ? ((equity / balance) - 1) * 100 : 0;
 
   return (
-    <div className="space-y-1.5 text-xs h-full flex flex-col justify-center">
+    <div className="space-y-3 text-sm h-full flex flex-col justify-around">
         {loading ? <SkeletonLoader /> : (
             <>
                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500 dark:text-gray-400">موجودی (Balance)</span>
+                    <span className="text-gray-500 dark:text-gray-400">موجودی اولیه</span>
                     <span className="font-mono font-semibold">{formatCurrency(balance)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-gray-500 dark:text-gray-400">سرمایه (Equity)</span>
-                    <span className="font-mono font-semibold">{formatCurrency(equity)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">سرمایه فعلی</span>
+                    <span className={`font-mono font-bold text-lg ${equity >= balance ? 'text-green-500' : 'text-red-500'}`}>{formatCurrency(equity)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-gray-500 dark:text-gray-400">مارجین آزاد</span>
-                    <span className="font-mono font-semibold">{formatCurrency(equity * 0.95)}</span>
+                 <div className="pt-2">
+                    <div className="relative w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full" title={`موجودی اولیه: ${formatCurrency(balance)}`}>
+                        <div 
+                            className={`h-2.5 rounded-full ${equity >= balance ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${Math.min(equityToBalanceRatio, 100)}%` }}
+                            title={`سرمایه فعلی: ${formatCurrency(equity)}`}>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1.5">
+                        <span className={`font-bold ${equity >= balance ? 'text-green-500' : 'text-red-500'}`}>{pnlPercent.toFixed(2)}%</span>
+                        {equity >= balance ? ' سود' : ' ضرر'}
+                    </p>
                 </div>
             </>
         )}

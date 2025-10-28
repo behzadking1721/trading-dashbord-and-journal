@@ -11,27 +11,20 @@ const isToday = (date: Date): boolean => {
            date.getFullYear() === today.getFullYear();
 };
 
-// --- UI Components ---
-const StatItem: React.FC<{ icon: React.ElementType, label: string, value: string | number, color?: string }> = ({ icon: Icon, label, value, color = 'text-gray-900 dark:text-gray-100' }) => (
-    <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <Icon size={12} />
-            <span>{label}</span>
+const SkeletonLoader: React.FC = () => (
+    <div className="animate-pulse space-y-3">
+        <div className="p-4 rounded-lg bg-gray-200 dark:bg-gray-700/50">
+            <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto mb-2"></div>
+            <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mx-auto"></div>
         </div>
-        <span className={`font-bold font-mono text-sm ${color}`}>{value}</span>
+        <div className="grid grid-cols-3 gap-2">
+            <div className="h-12 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
+            <div className="h-12 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
+            <div className="h-12 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
+        </div>
     </div>
 );
 
-const SkeletonLoader: React.FC = () => (
-    <div className="animate-pulse space-y-3">
-        {[...Array(4)].map((_, i) => (
-            <div key={i} className="flex justify-between items-center">
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
-                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/3"></div>
-            </div>
-        ))}
-    </div>
-);
 
 // --- Main Widget ---
 const TodaysPerformanceWidget: React.FC = () => {
@@ -82,30 +75,30 @@ const TodaysPerformanceWidget: React.FC = () => {
         return <SkeletonLoader />;
     }
 
+    const pnlColor = stats.pnl >= 0 ? 'text-green-500' : 'text-red-500';
+
     return (
-        <div className="space-y-2.5 h-full flex flex-col justify-center">
-            <StatItem 
-                icon={DollarSign}
-                label="سود/ضرر امروز"
-                value={`$${stats.pnl.toFixed(2)}`}
-                color={stats.pnl >= 0 ? 'text-green-500' : 'text-red-500'}
-            />
-            <StatItem 
-                icon={Percent}
-                label="نرخ برد امروز"
-                value={`${stats.winRate.toFixed(1)}%`}
-            />
-             <StatItem 
-                icon={BarChart2}
-                label="تعداد معاملات امروز"
-                value={stats.totalTrades}
-            />
-            <StatItem 
-                icon={BookOpen}
-                label="پوزیشن‌های باز"
-                value={stats.openTrades}
-                color="text-blue-500"
-            />
+        <div className="space-y-3">
+            <div className={`p-3 rounded-lg text-center bg-opacity-50 ${stats.pnl >= 0 ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                <p className="text-sm text-gray-600 dark:text-gray-300">سود/ضرر امروز</p>
+                <p className={`text-3xl font-bold font-mono ${pnlColor}`}>
+                    {stats.pnl >= 0 ? '+' : ''}${stats.pnl.toFixed(2)}
+                </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">نرخ برد</p>
+                    <p className="font-bold text-lg">{stats.winRate.toFixed(1)}%</p>
+                </div>
+                <div className="p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">معاملات</p>
+                    <p className="font-bold text-lg">{stats.totalTrades}</p>
+                </div>
+                <div className="p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">پوزیشن باز</p>
+                    <p className="font-bold text-lg text-blue-500">{stats.openTrades}</p>
+                </div>
+            </div>
         </div>
     );
 };

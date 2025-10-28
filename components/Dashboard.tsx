@@ -20,10 +20,13 @@ const getFromLS = (key: string, defaultValue: any) => {
     return defaultValue;
 };
 
-// Define widgets for the new two-part layout
-const kpiWidgets = ['todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management'];
-const mainColumnWidgets = ['trades_table'];
-const sideColumnWidgets = ['sessions_clock', 'live_prices', 'trading_checklist', 'position_size_calculator', 'market_news'];
+const mainWidget = 'trades_table';
+
+const remainingWidgets = [
+    'todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management',
+    'trading_checklist', 'position_size_calculator', 'sessions_clock', 'live_prices',
+    'market_news', 'psychology_analysis', 'ai_summary', 'weather', 'hafez_fortune'
+];
 
 interface DashboardProps {
     onOpenModal: (entry: JournalEntry | null) => void;
@@ -36,9 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
         const loadVisibility = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
-            const defaultVisibleWidgets = [
-                ...kpiWidgets, ...mainColumnWidgets, ...sideColumnWidgets
-            ];
+            const defaultVisibleWidgets = [mainWidget, ...remainingWidgets];
 
             const newVisibility: WidgetVisibility = {};
             Object.keys(WIDGET_DEFINITIONS).forEach(key => {
@@ -64,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
 
         return (
             <Card key={key} title={def.title} icon={def.icon}>
-                <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
+                <Suspense fallback={<div className="flex items-center justify-center h-full min-h-[100px]"><RefreshCw className="animate-spin" /></div>}>
                     <WidgetComponent {...widgetProps} />
                 </Suspense>
             </Card>
@@ -72,23 +73,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
     };
 
     return (
-        <div className="p-3 space-y-3">
-            {/* Top KPI Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                {kpiWidgets.map(createWidget)}
+        <div className="p-4 space-y-4">
+            {/* Main full-width widget */}
+            <div>
+                {createWidget(mainWidget)}
             </div>
 
-            {/* Main Workspace */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {/* Main Column */}
-                <div className="lg:col-span-2 flex flex-col gap-3">
-                    {mainColumnWidgets.map(createWidget)}
-                </div>
-
-                {/* Side Column */}
-                <div className="lg:col-span-1 flex flex-col gap-3">
-                    {sideColumnWidgets.map(createWidget)}
-                </div>
+            {/* Grid for other widgets */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {remainingWidgets.map(createWidget)}
             </div>
         </div>
     );
