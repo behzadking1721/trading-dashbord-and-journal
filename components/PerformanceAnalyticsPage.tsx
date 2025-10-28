@@ -170,16 +170,28 @@ const PerformanceAnalyticsPage: React.FC = () => {
     
     if (!stats || stats.totalTrades === 0) {
         return (
-            <div className="p-6 text-center">
-                <h1 className="text-2xl font-bold mb-4">تحلیل عملکرد</h1>
-                <p className="text-gray-500">هیچ معامله بسته‌شده‌ای برای تحلیل یافت نشد. لطفاً ابتدا معاملاتی را در ژورنال خود ثبت و نتیجه آن‌ها را مشخص کنید.</p>
+            <div className="p-6">
+                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <h1 className="text-2xl font-bold">تحلیل عملکرد</h1>
+                        <p className="text-gray-500 dark:text-gray-400">شاخص‌های کلیدی عملکرد خود را برای بهبود استراتژی دنبال کنید.</p>
+                    </div>
+                </header>
+                <div className="text-center py-10">
+                    <p className="text-gray-500">هیچ معامله بسته‌شده‌ای برای تحلیل یافت نشد. لطفاً ابتدا معاملاتی را در ژورنال خود ثبت و نتیجه آن‌ها را مشخص کنید.</p>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="p-6 space-y-6">
-            <h1 className="text-2xl font-bold">تحلیل عملکرد</h1>
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                <div>
+                    <h1 className="text-2xl font-bold">تحلیل عملکرد</h1>
+                    <p className="text-gray-500 dark:text-gray-400">شاخص‌های کلیدی عملکرد خود را برای بهبود استراتژی دنبال کنید.</p>
+                </div>
+            </header>
 
             <div className="p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Activity /> منحنی سرمایه (Equity Curve)</h2>

@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, X, Edit3, RefreshCw, ChevronDown } from 'lucide-react';
-import type { TradingSetup, TradingChecklistItem, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField } from '../types';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, Edit3, RefreshCw } from 'lucide-react';
+import type { TradingSetup, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField } from '../types';
 import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../constants';
 import { getJournalEntries, addJournalEntry } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
+import Card from './shared/Card';
 
+const SetupFormModal = lazy(() => import('./settings/SetupFormModal'));
 
 const STORAGE_KEY_SETUPS = 'trading-setups';
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 const STORAGE_KEY_NOTIFICATION_SETTINGS = 'notification-settings';
 const STORAGE_KEY_RISK_SETTINGS = 'risk-management-settings';
 const STORAGE_KEY_FORM_SETTINGS = 'journal-form-settings';
-const MISTAKES_LIST = ['نادیده گرفتن چک‌لیست', 'ورود بدون ستاپ', 'جابجا کردن حد ضرر', 'ریسک بیش از حد', 'خروج زودهنگام (ترس)', 'خروج دیرهنگام (طمع)'];
 const EMOTIONS_BEFORE = ['مطمئن', 'منظم', 'مضطرب', 'هیجانی'];
 const ENTRY_REASONS = ['ستاپ تکنیکال', 'خبر', 'دنبال کردن ترند', 'ترس از دست دادن (FOMO)', 'انتقام'];
 const EMOTIONS_AFTER = ['رضایت', 'پشیمانی', 'شک', 'هیجان‌زده'];
@@ -171,11 +172,6 @@ const SettingsPage: React.FC = () => {
         <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} disabled={disabled} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div></label>
     );
 
-    const SettingsSection: React.FC<{title: string; icon: React.ElementType; children: React.ReactNode, className?: string}> = ({title, icon: Icon, children, className}) => (
-        <div className={`p-6 rounded-lg shadow-md bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 ${className}`}><h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Icon size={20}/> {title}</h2>{children}</div>
-    );
-    
-    // FIX: Explicitly type the tabs array to ensure tab.id is of type SettingsTab.
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
         { id: 'general', label: 'عمومی', icon: SettingsIcon },
         { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
@@ -186,7 +182,7 @@ const SettingsPage: React.FC = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'general': return (<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <SettingsSection title="مدیریت سرمایه و ریسک" icon={SettingsIcon}>
+                 <Card title="مدیریت سرمایه و ریسک" icon={SettingsIcon}>
                     <div className="space-y-4">
                         <div><label className="block text-sm font-medium mb-1">موجودی حساب ($)</label><input type="number" value={riskSettings.accountBalance} onChange={e => handleRiskSettingsChange('accountBalance', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" /></div>
                         <div><label className="block text-sm font-medium mb-1">استراتژی مدیریت حجم</label><select value={riskSettings.strategy} onChange={e => handleRiskSettingsChange('strategy', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"><option value="fixed_percent">درصد ثابت</option><option value="anti_martingale">افزایشی (ضد مارتینگل)</option></select></div>
@@ -195,9 +191,9 @@ const SettingsPage: React.FC = () => {
                         <AntiMartingaleVisualizer {...riskSettings.antiMartingale} winStreak={winStreak} />
                         <div className="p-3 border rounded-md dark:border-gray-500 bg-gray-50 dark:bg-gray-700/50 mt-2 text-sm space-y-1"><p>رشته پیروزی‌های متوالی فعلی: <span className="font-bold">{winStreak}</span></p><p>در معامله بعدی، شما <strong className="font-mono text-indigo-500">${effectiveRiskAmount.toFixed(2)}</strong> ({effectiveRiskPercent.toFixed(2)}%) ریسک خواهید کرد.</p><p className="text-xs text-gray-500 pt-1 border-t border-gray-200 dark:border-gray-600 mt-1">رشته پیروزی از آخرین معاملات بسته‌شده محاسبه می‌شود و پس از اولین ضرر، صفر خواهد شد.</p></div></div>)}
                     </div>
-                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4"><button onClick={handleSaveRisk} className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors"><Save size={18} /><span>ذخیره تنظیمات ریسک</span></button></div>
-                 </SettingsSection>
-                 <SettingsSection title="مدیریت اعلان‌ها" icon={Bell}>
+                    <div className="pt-4 mt-4"><button onClick={handleSaveRisk} className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors"><Save size={18} /><span>ذخیره تنظیمات ریسک</span></button></div>
+                 </Card>
+                 <Card title="مدیریت اعلان‌ها" icon={Bell}>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between"><div><p className="font-semibold text-sm">فعال‌سازی کلی اعلان‌ها</p><p className="text-xs text-gray-500">فعال یا غیرفعال کردن تمام هشدارها</p></div><ToggleSwitch checked={notificationSettings.globalEnable} onChange={c => handleNotificationSettingChange('globalEnable', c)} /></div>
                         {[ {key: 'priceAlerts', label: 'هشدار قیمت'}, {key: 'newsAlerts', label: 'هشدار رویدادهای اقتصادی'} ].map(item => (
@@ -207,21 +203,21 @@ const SettingsPage: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                 </SettingsSection>
+                 </Card>
             </div>);
-            case 'dashboard': return (<SettingsSection title="مدیریت ویجت‌های داشبورد" icon={LayoutDashboard} className="max-w-4xl mx-auto">
+            case 'dashboard': return (<div className="max-w-4xl mx-auto"><Card title="مدیریت ویجت‌های داشبورد" icon={LayoutDashboard}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
                     {Object.entries(WIDGET_DEFINITIONS).map(([key, { title, icon: Icon, description }]) => (<div key={key} className="flex items-center justify-between p-3 border rounded-lg dark:border-gray-700"><div className="flex items-center gap-3"><Icon className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" /><div><p className="font-semibold text-sm">{title}</p><p className="text-xs text-gray-500">{description}</p></div></div><ToggleSwitch checked={widgetVisibility[key]} onChange={c => handleVisibilityChange(key, c)} /></div>))}
                 </div>
-            </SettingsSection>);
+            </Card></div>);
             case 'journal': return (<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SettingsSection title="ستاپ‌های معاملاتی" icon={SettingsIcon}>
+                <Card title="ستاپ‌های معاملاتی" icon={SettingsIcon}>
                     <div className="flex justify-between items-center mb-4"><h3 className="text-md font-semibold">لیست ستاپ‌ها</h3><button onClick={handleAddNewSetup} className="flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600 transition-colors"><Plus size={16} /><span>ستاپ جدید</span></button></div>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                         {setups.length > 0 ? setups.map(setup => (<div key={setup.id} className="p-3 rounded-md border dark:border-gray-600 flex justify-between items-center"><div><p className="font-bold">{setup.name} {setup.isActive && <span className="text-green-500 text-xs">(فعال)</span>}</p><p className="text-xs text-gray-500">{setup.category} - {setup.checklist.length} آیتم</p></div><div className="flex items-center gap-2"><button title="فعال سازی" onClick={() => handleSetActive(setup.id)} className={`p-2 rounded-full ${setup.isActive ? 'text-green-500' : 'text-gray-400 hover:text-green-500'}`}><CheckCircle size={18} /></button><button title="ویرایش" onClick={() => setEditingSetup(setup)} className="p-2 rounded-full text-gray-400 hover:text-blue-500"><Edit size={16} /></button><button title="حذف" onClick={() => handleDeleteSetup(setup.id)} className="p-2 rounded-full text-gray-400 hover:text-red-500"><Trash2 size={16} /></button></div></div>)) : <p className="text-center text-sm text-gray-500 py-4">هنوز هیچ ستاپی ثبت نشده است.</p>}
                     </div>
-                </SettingsSection>
-                <SettingsSection title="تنظیمات فرم ثبت معامله" icon={Edit3}>
+                </Card>
+                <Card title="تنظیمات فرم ثبت معامله" icon={Edit3}>
                     <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
                         {JOURNAL_FORM_FIELDS.map((field) => (
                             <div key={field.id} className="grid grid-cols-[1fr_120px_50px] items-center gap-4">
@@ -231,9 +227,9 @@ const SettingsPage: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                </SettingsSection>
+                </Card>
             </div>);
-            case 'data': return (<SettingsSection title="مدیریت داده‌ها" icon={Database} className="max-w-2xl mx-auto">
+            case 'data': return (<div className="max-w-2xl mx-auto"><Card title="مدیریت داده‌ها" icon={Database}>
                 <p className="text-sm text-gray-500 mb-4">از داده‌های ژورنال خود خروجی JSON بگیرید یا فایل پشتیبان را وارد کنید. این یک راه عالی برای پشتیبان‌گیری یا انتقال داده‌ها بین دستگاه‌ها است.</p>
                 <div className="flex gap-4">
                     <button onClick={handleExport} disabled={isExporting || isImporting} className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
@@ -246,13 +242,18 @@ const SettingsPage: React.FC = () => {
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleImportFile} accept=".json" className="hidden" />
                 </div>
-            </SettingsSection>);
+            </Card></div>);
         }
     }
     
     return (
         <div className="p-6 h-full flex flex-col">
-            <h1 className="text-2xl font-bold mb-6">تنظیمات</h1>
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold">تنظیمات</h1>
+                    <p className="text-gray-500 dark:text-gray-400">داشبورد، ژورنال و ابزارهای خود را شخصی‌سازی کنید.</p>
+                </div>
+            </header>
              <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
                     {tabs.map(tab => (
@@ -265,61 +266,11 @@ const SettingsPage: React.FC = () => {
             <div className="flex-grow overflow-y-auto">
                 {renderContent()}
             </div>
-            {editingSetup && <SetupFormModal setup={editingSetup} onSave={handleSaveSetup} onClose={() => setEditingSetup(null)} />}
-        </div>
-    );
-};
-
-const SetupFormModal: React.FC<{setup: TradingSetup, onSave: (setup: TradingSetup) => void, onClose: () => void}> = ({ setup, onSave, onClose }) => {
-    const [currentSetup, setCurrentSetup] = useState(setup);
-    const [newItemText, setNewItemText] = useState('');
-    const [tagInput, setTagInput] = useState('');
-
-    const handleAddItem = () => { if (newItemText.trim()) { setCurrentSetup(prev => ({ ...prev, checklist: [...prev.checklist, { id: Date.now().toString(), text: newItemText }]})); setNewItemText(''); } };
-    const handleDeleteItem = (id: string) => { setCurrentSetup(prev => ({ ...prev, checklist: prev.checklist.filter(item => item.id !== id)})); };
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(currentSetup); };
-    const handleAddTag = () => { const trimmedTag = tagInput.trim(); if (trimmedTag && !currentSetup.defaultTags?.includes(trimmedTag)) { setCurrentSetup(prev => ({ ...prev, defaultTags: [...(prev.defaultTags || []), trimmedTag] })); } setTagInput(''); };
-    const handleRemoveTag = (tagToRemove: string) => { setCurrentSetup(prev => ({ ...prev, defaultTags: (prev.defaultTags || []).filter(tag => tag !== tagToRemove) })); };
-    const handleMultiSelect = (name: 'defaultMistakes', value: string) => setCurrentSetup(prev => ({ ...prev, [name]: (prev[name] || []).includes(value) ? (prev[name] || []).filter(v => v !== value) : [...(prev[name] || []), value] }));
-
-    return (
-         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700"><h2 className="text-xl font-bold">{setup.id.startsWith('new') ? 'ستاپ معاملاتی جدید' : 'ویرایش ستاپ معاملاتی'}</h2><button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button></div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                    <input type="text" placeholder="نام ستاپ" required value={currentSetup.name} onChange={e => setCurrentSetup({...currentSetup, name: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
-                    <textarea placeholder="توضیحات" value={currentSetup.description} onChange={e => setCurrentSetup({...currentSetup, description: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" rows={2}></textarea>
-                    
-                    <details className="border rounded-md dark:border-gray-600">
-                        <summary className="p-4 cursor-pointer font-semibold text-md list-none">
-                            مقادیر پیش‌فرض (اختیاری)
-                        </summary>
-                        <div className="p-4 border-t dark:border-gray-600 space-y-4">
-                            <input type="number" step="0.1" placeholder="نسبت ریسک به ریوارد پیش‌فرض" value={currentSetup.defaultRiskRewardRatio === undefined ? '' : currentSetup.defaultRiskRewardRatio} onChange={e => setCurrentSetup({...currentSetup, defaultRiskRewardRatio: e.target.value ? parseFloat(e.target.value) : undefined})} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
-                            <div>
-                                <label className="block text-sm font-medium mb-1">تگ‌های پیش‌فرض</label>
-                                <div className="flex flex-wrap items-center gap-2 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">{currentSetup.defaultTags?.map(tag => (<div key={tag} className="flex items-center gap-1 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">{tag}<button type="button" onClick={() => handleRemoveTag(tag)}><X size={14} /></button></div>))}<input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())} placeholder="افزودن تگ..." className="bg-transparent focus:outline-none flex-grow" /></div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">اشتباهات رایج پیش‌فرض</label>
-                                <div className="flex flex-wrap gap-2">{MISTAKES_LIST.map(mistake => (<button key={mistake} type="button" onClick={() => handleMultiSelect('defaultMistakes', mistake)} className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${currentSetup.defaultMistakes?.includes(mistake) ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{mistake}</button>))}</div>
-                            </div>
-                        </div>
-                    </details>
-                    
-                    <details className="border rounded-md dark:border-gray-600">
-                        <summary className="p-4 cursor-pointer font-semibold text-md list-none">
-                           چک‌لیست
-                        </summary>
-                         <div className="p-4 border-t dark:border-gray-600 space-y-3">
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2">{currentSetup.checklist.map(item => (<div key={item.id} className="flex items-center justify-between text-sm bg-gray-100 dark:bg-gray-700/50 p-2 rounded"><span>{item.text}</span><button type="button" onClick={() => handleDeleteItem(item.id)} className="p-1 text-red-500 opacity-50 hover:opacity-100"><Trash2 size={14} /></button></div>))}</div>
-                            <div className="flex gap-2"><input type="text" value={newItemText} onChange={e => setNewItemText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddItem())} placeholder="آیتم جدید چک‌لیست" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" /><button type="button" onClick={handleAddItem} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">افزودن</button></div>
-                        </div>
-                    </details>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700 mt-auto"><button type="button" onClick={onClose} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">انصراف</button><button type="submit" className="px-4 py-2 rounded bg-indigo-500 text-white hover:bg-indigo-600">ذخیره ستاپ</button></div>
-                 </form>
-            </div>
+            {editingSetup && (
+                <Suspense fallback={null}>
+                    <SetupFormModal setup={editingSetup} onSave={handleSaveSetup} onClose={() => setEditingSetup(null)} />
+                </Suspense>
+            )}
         </div>
     );
 };

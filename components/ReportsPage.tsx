@@ -371,8 +371,11 @@ const ReportsPage: React.FC = () => {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">گزارش‌های پیشرفته</h1>
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">گزارش‌های پیشرفته</h1>
+                    <p className="text-gray-500 dark:text-gray-400">با تحلیل عمیق داده‌های خود، الگوهای سودده و زیان‌ده را کشف کنید.</p>
+                </div>
                 <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-200 dark:bg-gray-700">
                     {(['all', '90d', '30d', '7d'] as TimeFilter[]).map(filter => (
                         <button
@@ -386,7 +389,7 @@ const ReportsPage: React.FC = () => {
                         </button>
                     ))}
                 </div>
-            </div>
+            </header>
 
             <div className="space-y-4">
                 <h2 className="text-xl font-bold">خلاصه عملکرد</h2>

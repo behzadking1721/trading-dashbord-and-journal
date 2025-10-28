@@ -78,10 +78,12 @@ const CalendarPage: React.FC = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
-            <header>
-                <h1 className="text-2xl font-bold">تقویم اقتصادی بازارهای مالی</h1>
-                <p className="text-gray-500 dark:text-gray-400">رویدادهای کلیدی بازارهای فارکس، کریپتو، سهام و کالاها را رصد کنید.</p>
+        <div className="p-4 sm:p-6 h-full flex flex-col">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold">تقویم اقتصادی بازارهای مالی</h1>
+                    <p className="text-gray-500 dark:text-gray-400">رویدادهای کلیدی بازارهای فارکس، کریپتو، سهام و کالاها را رصد کنید.</p>
+                </div>
             </header>
 
             <div className="border-b border-gray-200 dark:border-gray-700">
@@ -107,7 +109,7 @@ const CalendarPage: React.FC = () => {
                 </nav>
             </div>
 
-            <main className="flex-grow overflow-y-auto">
+            <main className="flex-grow overflow-y-auto pt-6">
                 <Suspense fallback={
                     <div className="flex items-center justify-center h-full">
                         <RefreshCw className="w-8 h-8 animate-spin text-indigo-500" />

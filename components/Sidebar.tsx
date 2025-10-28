@@ -29,9 +29,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-white/30 dark:bg-slate-900/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-slate-700/50 flex flex-col p-8 shadow-2xl">
-      <div className="flex items-center gap-3 mb-12 px-2">
-        <LayoutPanelLeft className="w-8 h-8 text-indigo-500" />
+    <aside className="w-72 flex-shrink-0 bg-white/30 dark:bg-slate-900/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-slate-700/50 flex flex-col p-6 shadow-2xl">
+      <div className="flex items-center gap-3 mb-8 px-2">
+        <LayoutPanelLeft className="w-7 h-7 text-indigo-500" />
         <h1 className="text-xl font-bold text-gray-800 dark:text-white">ترید ژورنال</h1>
       </div>
       <nav className="flex-grow">
