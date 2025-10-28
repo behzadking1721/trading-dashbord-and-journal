@@ -164,7 +164,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 dark:text-gray-400">نمای کلی از وضعیت بازار و معاملات شما.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                     <button onClick={() => setIsAlertsModalOpen(true)} className="p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="هشدارها">
+                     <button onClick={() => setIsAlertsModalOpen(true)} className="p-4 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-200/50 dark:hover:bg-slate-700/50" title="هشدارها">
                         <Bell className="w-6 h-6 text-indigo-500"/>
                     </button>
                     <div className="flex items-center gap-4 p-3 rounded-lg bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-gray-200 dark:border-slate-700">
