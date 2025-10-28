@@ -20,10 +20,12 @@ const getFromLS = (key: string, defaultValue: any) => {
     return defaultValue;
 };
 
-// Define which widgets belong to which column
-const leftColumnWidgets = ['trading_checklist', 'risk_management', 'psychology_analysis', 'todays_performance', 'wallet_overview', 'performance_analytics'];
-const middleColumnWidgets = ['trades_table'];
-const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'hafez_fortune', 'ai_summary', 'weather'];
+// Define which widgets belong to which column based on a logical trading workflow.
+// In RTL, these render from right to left in the order they appear in the JSX.
+const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'ai_summary'];
+const middleColumnWidgets = ['trades_table', 'todays_performance', 'performance_analytics', 'wallet_overview', 'psychology_analysis'];
+const leftColumnWidgets = ['trading_checklist', 'position_size_calculator', 'risk_management', 'hafez_fortune', 'weather'];
+
 
 const Dashboard: React.FC = () => {
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
@@ -35,7 +37,7 @@ const Dashboard: React.FC = () => {
             const defaultVisibleWidgets = [
                 'todays_performance', 'performance_analytics', 'wallet_overview', 'risk_management',
                 'trades_table', 'sessions_clock', 'live_prices', 'trading_checklist', 'market_news',
-                'hafez_fortune', 'psychology_analysis',
+                'hafez_fortune', 'psychology_analysis', 'position_size_calculator',
             ];
 
             const newVisibility: WidgetVisibility = {};
@@ -68,17 +70,17 @@ const Dashboard: React.FC = () => {
         <div className="p-4 sm:p-6 lg:p-8">
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                 
-                {/* Right Column (on RTL) - Analysis & Prep */}
+                {/* Visually Right Column (Tools & Prep) */}
                 <div className="xl:col-span-1 flex flex-col gap-6">
                     {leftColumnWidgets.map(createWidget)}
                 </div>
 
-                {/* Middle Column - Core Operations */}
+                {/* Middle Column (Core Operations & Status) */}
                 <div className="xl:col-span-2 flex flex-col gap-6">
                     {middleColumnWidgets.map(createWidget)}
                 </div>
 
-                {/* Left Column (on RTL) - Market Status & Context */}
+                {/* Visually Left Column (Market Context) */}
                 <div className="xl:col-span-1 flex flex-col gap-6">
                     {rightColumnWidgets.map(createWidget)}
                 </div>

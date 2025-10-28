@@ -2,7 +2,7 @@ import React from 'react';
 import { lazy } from 'react';
 import {
     LineChart, Flame, Globe, History, ShieldAlert,
-    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen, Calendar, HeartPulse
+    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen, Calendar, HeartPulse, Calculator
 } from 'lucide-react';
 import type { JournalFormField } from './types';
 
@@ -20,6 +20,7 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
   live_prices: lazy(() => import('./components/widgets/LivePricesWidget')),
   todays_performance: lazy(() => import('./components/widgets/TodaysPerformanceWidget')),
   psychology_analysis: lazy(() => import('./components/widgets/PsychologyAnalysisWidget')),
+  position_size_calculator: lazy(() => import('./components/widgets/PositionSizeCalculatorWidget')),
 };
 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
@@ -36,6 +37,7 @@ export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.E
   live_prices: { title: 'قیمت‌های زنده', icon: LineChart, description: 'نمایش لحظه‌ای قیمت دارایی‌های منتخب.' },
   todays_performance: { title: 'عملکرد امروز', icon: Calendar, description: 'خلاصه‌ای از عملکرد معاملاتی شما در روز جاری.' },
   psychology_analysis: { title: 'تحلیل روانشناسی', icon: HeartPulse, description: 'تاثیر اشتباهات و انگیزه‌ها بر نتایج معاملات.'},
+  position_size_calculator: { title: 'ماشین‌حساب حجم', icon: Calculator, description: 'محاسبه سریع حجم پوزیشن بر اساس ریسک.' },
 };
 
 
