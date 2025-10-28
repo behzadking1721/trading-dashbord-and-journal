@@ -11,19 +11,19 @@ interface Stats {
 
 const KpiCard: React.FC<{ icon: React.ElementType, label: string, value: string, color: string }> = ({ icon: Icon, label, value, color }) => (
     <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
-        <p className={`text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1`}>
-            <Icon size={12}/> {label}
+        <p className={`text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1`}>
+            <Icon size={10}/> {label}
         </p>
-        <p className={`text-base font-bold ${color}`}>{value}</p>
+        <p className={`text-sm font-bold ${color}`}>{value}</p>
     </div>
 );
 
 const SkeletonLoader: React.FC = () => (
-    <div className="animate-pulse grid grid-cols-3 gap-4 text-center">
+    <div className="animate-pulse grid grid-cols-3 gap-2 text-center">
         {[...Array(3)].map((_, i) => (
             <div key={i} className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700/50">
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mx-auto mb-2"></div>
-                <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mx-auto mb-2"></div>
+                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto"></div>
             </div>
         ))}
     </div>
@@ -73,7 +73,7 @@ const PerformanceAnalyticsWidget: React.FC = () => {
   return (
     <div className="h-full flex flex-col justify-center">
       {loading ? <SkeletonLoader /> : (
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center">
             <KpiCard 
                 icon={Percent}
                 label="نرخ برد"
@@ -89,7 +89,7 @@ const PerformanceAnalyticsWidget: React.FC = () => {
              <KpiCard 
                 icon={TrendingUp}
                 label="مجموع PnL"
-                value={`$${stats.totalPnl.toFixed(2)}`}
+                value={`$${stats.totalPnl.toFixed(0)}`}
                 color={stats.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}
             />
         </div>

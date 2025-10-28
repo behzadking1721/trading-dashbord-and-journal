@@ -54,14 +54,14 @@ const TradingChecklistWidget: React.FC = () => {
     const completionPercentage = activeSetup ? (activeSetup.checklist.filter(item => checklistStates[`${activeSetup.id}-${item.id}`]).length / activeSetup.checklist.length) * 100 : 0;
 
     return (
-        <div className="h-full flex flex-col space-y-3">
+        <div className="h-full flex flex-col space-y-2">
             {setups.length > 0 && activeSetup ? (
                 <>
                     <div className="relative">
                         <select
                             value={activeSetup.id}
                             onChange={(e) => handleSetupChange(e.target.value)}
-                            className="w-full appearance-none bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full appearance-none bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md py-1.5 px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                             {setups.map(setup => (
                                 <option key={setup.id} value={setup.id}>{setup.name}</option>
@@ -70,26 +70,28 @@ const TradingChecklistWidget: React.FC = () => {
                         <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
                     </div>
                     
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700">
-                        <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${completionPercentage}%` }}></div>
+                    <div className="w-full bg-gray-200 rounded-full h-1 dark:bg-gray-700">
+                        <div className="bg-indigo-500 h-1 rounded-full transition-all duration-300" style={{ width: `${completionPercentage}%` }}></div>
                     </div>
 
-                    {activeSetup.checklist.map(item => (
-                        <div key={item.id} className="flex items-center gap-3 text-sm cursor-pointer" onClick={() => toggleItem(item.id)}>
-                            <input
-                                type="checkbox"
-                                checked={!!checklistStates[`${activeSetup.id}-${item.id}`]}
-                                readOnly
-                                className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                            />
-                            <span className={`${!!checklistStates[`${activeSetup.id}-${item.id}`] ? 'line-through text-gray-500' : ''}`}>
-                                {item.text}
-                            </span>
-                        </div>
-                    ))}
+                    <div className="space-y-2 flex-grow overflow-y-auto">
+                        {activeSetup.checklist.map(item => (
+                            <div key={item.id} className="flex items-center gap-2 text-xs cursor-pointer" onClick={() => toggleItem(item.id)}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!checklistStates[`${activeSetup.id}-${item.id}`]}
+                                    readOnly
+                                    className="w-3.5 h-3.5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <span className={`${!!checklistStates[`${activeSetup.id}-${item.id}`] ? 'line-through text-gray-500' : ''}`}>
+                                    {item.text}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </>
             ) : (
-                <div className="text-center text-gray-500 text-sm p-4 flex-grow flex flex-col justify-center">
+                <div className="text-center text-gray-500 text-xs p-4 flex-grow flex flex-col justify-center">
                     <p>هیچ ستاپ معاملاتی تعریف نشده است.</p>
                     <a href="#/settings" className="text-indigo-500 hover:underline">برای شروع به صفحه تنظیمات بروید.</a>
                 </div>

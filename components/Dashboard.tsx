@@ -64,21 +64,21 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="p-4 space-y-4">
+        <div className="p-3 space-y-3">
             {/* Top KPI Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 {kpiWidgets.map(createWidget)}
             </div>
 
             {/* Main Workspace */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 {/* Main Column */}
-                <div className="lg:col-span-2 flex flex-col gap-4">
+                <div className="lg:col-span-2 flex flex-col gap-3">
                     {mainColumnWidgets.map(createWidget)}
                 </div>
 
                 {/* Side Column */}
-                <div className="lg:col-span-1 flex flex-col gap-4">
+                <div className="lg:col-span-1 flex flex-col gap-3">
                     {sideColumnWidgets.map(createWidget)}
                 </div>
             </div>

@@ -7,11 +7,11 @@ const SkeletonLoader = () => (
     <tbody className="animate-pulse">
         {[...Array(3)].map((_, i) => (
             <tr key={i} className="border-b dark:border-gray-700">
-                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
-                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div></td>
-                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
-                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
-                <td className="px-4 py-2.5"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
             </tr>
         ))}
     </tbody>
@@ -60,7 +60,7 @@ const TradesTableWidget: React.FC = () => {
                 <div className="flex items-center border-b border-gray-200 dark:border-gray-700">
                     <button
                         onClick={() => setActiveTab('open')}
-                        className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold transition-colors ${
                             activeTab === 'open' ? 'border-b-2 border-indigo-500 text-indigo-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                     >
@@ -68,7 +68,7 @@ const TradesTableWidget: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
-                        className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold transition-colors ${
                             activeTab === 'history' ? 'border-b-2 border-indigo-500 text-indigo-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                     >
@@ -81,28 +81,28 @@ const TradesTableWidget: React.FC = () => {
                 </a>
             </div>
             <div className="overflow-x-auto flex-grow">
-                <table className="w-full text-sm text-right">
-                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700">
+                <table className="w-full text-xs text-right">
+                    <thead className="text-[11px] text-gray-500 uppercase bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th scope="col" className="px-4 py-2">نماد</th>
-                            <th scope="col" className="px-4 py-2">جهت</th>
-                            <th scope="col" className="px-4 py-2">ورود</th>
-                            <th scope="col" className="px-4 py-2">خروج</th>
-                            <th scope="col" className="px-4 py-2">سود/ضرر</th>
+                            <th scope="col" className="px-3 py-2">نماد</th>
+                            <th scope="col" className="px-3 py-2">جهت</th>
+                            <th scope="col" className="px-3 py-2">ورود</th>
+                            <th scope="col" className="px-3 py-2">خروج</th>
+                            <th scope="col" className="px-3 py-2">سود/ضرر</th>
                         </tr>
                     </thead>
                     {loading ? <SkeletonLoader /> : (
                         <tbody>
                             {tradesToShow.length > 0 ? tradesToShow.map(trade => (
                                 <tr key={trade.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                                    <td className="px-4 py-1.5 font-medium">{trade.symbol || '-'}</td>
-                                    <td className={`px-4 py-1.5 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
+                                    <td className="px-3 py-1 font-medium">{trade.symbol || '-'}</td>
+                                    <td className={`px-3 py-1 flex items-center gap-1 ${trade.side === 'Buy' ? 'text-green-500' : 'text-red-500'}`}>
                                         {trade.side === 'Buy' ? <ArrowUpCircle size={14} /> : trade.side === 'Sell' ? <ArrowDownCircle size={14} /> : null}
                                         {trade.side === 'Buy' ? 'خرید' : trade.side === 'Sell' ? 'فروش' : '-'}
                                     </td>
-                                    <td className="px-4 py-1.5 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
-                                    <td className="px-4 py-1.5 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
-                                    <td className={`px-4 py-1.5 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <td className="px-3 py-1 font-mono">{formatNumber(trade.entryPrice, 4)}</td>
+                                    <td className="px-3 py-1 font-mono">{formatNumber(trade.exitPrice, 4)}</td>
+                                    <td className={`px-3 py-1 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {trade.profitOrLoss != null ? formatNumber(trade.profitOrLoss, 2, '$') : <span className="text-xs text-blue-500">باز</span>}
                                     </td>
                                 </tr>

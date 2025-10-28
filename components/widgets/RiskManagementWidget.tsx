@@ -9,8 +9,8 @@ const ProgressBar: React.FC<{ value: number }> = ({ value }) => {
     if (value > 90) color = 'bg-red-500';
 
     return (
-        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div className={`${color} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${value}%` }}></div>
+        <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+            <div className={`${color} h-2 rounded-full transition-all duration-500`} style={{ width: `${value}%` }}></div>
         </div>
     );
 };
@@ -63,7 +63,7 @@ const RiskManagementWidget: React.FC = () => {
     }, []);
 
   return (
-    <div className="h-full flex flex-col justify-around space-y-3">
+    <div className="h-full flex flex-col justify-around space-y-2.5">
        {loading ? (
             <div className="animate-pulse space-y-2">
                 <div className="flex justify-between items-center">
@@ -75,24 +75,23 @@ const RiskManagementWidget: React.FC = () => {
        ) : (
         <div>
             <div className="flex justify-between items-center mb-1">
-                <h4 className="text-sm font-semibold">
+                <h4 className="text-xs font-semibold">
                     مجموع ریسک فعال
                 </h4>
-                <span className="text-base font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
+                <span className="text-sm font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
             </div>
             <ProgressBar value={riskLevel} />
-            <p className="text-xs text-gray-500 mt-1">حد مجاز ریسک کلی: {maxAllowedRisk}%</p>
+            <p className="text-[10px] text-gray-500 mt-1">حد مجاز ریسک کلی: {maxAllowedRisk}%</p>
         </div>
        )}
         
         <div>
-            <h4 className="text-sm font-semibold mb-2">توزیع نمادها (۱۰ اخیر)</h4>
+            <h4 className="text-xs font-semibold mb-2">توزیع نمادها (۱۰ اخیر)</h4>
             {loading ? (
-                 <div className="flex items-center justify-center h-20">
+                 <div className="flex items-center justify-center h-16">
                     <div className="animate-pulse flex space-x-4">
-                        <div className="rounded-full bg-gray-300 dark:bg-gray-600 h-10 w-10"></div>
-                        <div className="flex-1 space-y-2 py-1">
-                            <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                        <div className="rounded-full bg-gray-300 dark:bg-gray-600 h-8 w-8"></div>
+                        <div className="flex-1 space-y-1.5 py-1">
                             <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
                             <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
                         </div>
@@ -100,14 +99,14 @@ const RiskManagementWidget: React.FC = () => {
                 </div>
             ) : (
                 <div className="flex items-center justify-center text-gray-400">
-                    <PieChart className="w-20 h-20 min-w-20" />
+                    <PieChart className="w-16 h-16 min-w-16" />
                      <div className="space-y-1 text-xs w-full">
                         {distribution.length > 0 ? distribution.map(item => (
                              <div key={item.name} className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: item.color}}></span> 
+                                <span className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></span> 
                                 {item.name} ({item.value.toFixed(0)}%)
                              </div>
-                        )) : <p className="text-xs text-center">داده‌ای برای نمایش وجود ندارد.</p>}
+                        )) : <p className="text-[10px] text-center">داده‌ای برای نمایش وجود ندارد.</p>}
                     </div>
                 </div>
             )}

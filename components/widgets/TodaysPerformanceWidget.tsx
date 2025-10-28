@@ -14,20 +14,20 @@ const isToday = (date: Date): boolean => {
 // --- UI Components ---
 const StatItem: React.FC<{ icon: React.ElementType, label: string, value: string | number, color?: string }> = ({ icon: Icon, label, value, color = 'text-gray-900 dark:text-gray-100' }) => (
     <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Icon size={14} />
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <Icon size={12} />
             <span>{label}</span>
         </div>
-        <span className={`font-bold font-mono text-base ${color}`}>{value}</span>
+        <span className={`font-bold font-mono text-sm ${color}`}>{value}</span>
     </div>
 );
 
 const SkeletonLoader: React.FC = () => (
-    <div className="animate-pulse space-y-4">
+    <div className="animate-pulse space-y-3">
         {[...Array(4)].map((_, i) => (
             <div key={i} className="flex justify-between items-center">
-                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
-                <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
+                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/3"></div>
             </div>
         ))}
     </div>
@@ -83,7 +83,7 @@ const TodaysPerformanceWidget: React.FC = () => {
     }
 
     return (
-        <div className="space-y-3 h-full flex flex-col justify-center">
+        <div className="space-y-2.5 h-full flex flex-col justify-center">
             <StatItem 
                 icon={DollarSign}
                 label="سود/ضرر امروز"

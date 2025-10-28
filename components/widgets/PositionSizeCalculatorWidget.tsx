@@ -66,11 +66,11 @@ const PositionSizeCalculatorWidget: React.FC = () => {
         : 1;
 
     return (
-        <div className="h-full flex flex-col justify-around space-y-3 text-sm">
+        <div className="h-full flex flex-col justify-around space-y-2 text-sm">
             <div className="p-2 text-center rounded-lg bg-gray-100 dark:bg-gray-700/50">
                 <p className="text-xs text-gray-500 dark:text-gray-400">حجم محاسبه شده (لات)</p>
-                <p className="text-2xl font-bold font-mono text-indigo-500">{calculatedSize || '0.00'}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xl font-bold font-mono text-indigo-500">{calculatedSize || '0.00'}</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                     برای حساب <span className="font-mono">${riskSettings?.accountBalance.toLocaleString() || 'N/A'}</span> با ریسک <span className="font-mono">{riskPercentToShow}%</span>
                 </p>
             </div>
@@ -84,7 +84,7 @@ const PositionSizeCalculatorWidget: React.FC = () => {
                         placeholder="1.08500"
                         value={entryPrice}
                         onChange={(e) => setEntryPrice(e.target.value)}
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-center font-mono"
+                        className="w-full p-1.5 border rounded dark:bg-gray-700 dark:border-gray-600 text-center font-mono text-xs"
                         aria-label="قیمت ورود"
                     />
                 </div>
@@ -96,12 +96,12 @@ const PositionSizeCalculatorWidget: React.FC = () => {
                         placeholder="1.08300"
                         value={stopLoss}
                         onChange={(e) => setStopLoss(e.target.value)}
-                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-center font-mono"
+                        className="w-full p-1.5 border rounded dark:bg-gray-700 dark:border-gray-600 text-center font-mono text-xs"
                         aria-label="حد ضرر"
                     />
                 </div>
             </div>
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-center text-[10px] text-gray-400 dark:text-gray-500">
                 محاسبه بر اساس جفت‌ارزهای مبتنی بر دلار آمریکا (XXX/USD) با لات استاندارد است.
             </p>
         </div>
