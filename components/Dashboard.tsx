@@ -2,7 +2,7 @@ import React, { Suspense, useState, lazy, useEffect } from 'react';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
 import { RefreshCw } from 'lucide-react';
-import type { WidgetVisibility } from '../types';
+import type { WidgetVisibility, JournalEntry } from '../types';
 
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 
@@ -25,8 +25,11 @@ const kpiWidgets = ['todays_performance', 'wallet_overview', 'performance_analyt
 const mainColumnWidgets = ['trades_table'];
 const sideColumnWidgets = ['sessions_clock', 'live_prices', 'trading_checklist', 'position_size_calculator', 'market_news'];
 
+interface DashboardProps {
+    onOpenModal: (entry: JournalEntry | null) => void;
+}
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
 
     useEffect(() => {
@@ -53,11 +56,16 @@ const Dashboard: React.FC = () => {
         const WidgetComponent = WIDGETS[key as keyof typeof WIDGETS];
         const def = WIDGET_DEFINITIONS[key as keyof typeof WIDGET_DEFINITIONS];
         if (!WidgetComponent || !def || !widgetVisibility[key]) return null;
+        
+        const widgetProps: any = {};
+        if (key === 'trades_table') {
+            widgetProps.onEditTrade = onOpenModal;
+        }
 
         return (
             <Card key={key} title={def.title} icon={def.icon}>
                 <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="animate-spin" /></div>}>
-                    <WidgetComponent />
+                    <WidgetComponent {...widgetProps} />
                 </Suspense>
             </Card>
         );

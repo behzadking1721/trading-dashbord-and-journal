@@ -102,6 +102,12 @@ const AppContent: React.FC = () => {
 
   const CurrentPageComponent = pages[currentPage] || pages['/'];
   const pageTitle = PAGE_TITLES[currentPage] || 'داشبورد';
+
+  const pageProps: { onOpenModal?: (entry: JournalEntry | null) => void } = {};
+  if (currentPage === '/' || currentPage === '/journal') {
+      pageProps.onOpenModal = handleOpenJournalModal;
+  }
+
   return (
     <>
       <Sidebar currentPage={currentPage} />
@@ -113,9 +119,7 @@ const AppContent: React.FC = () => {
                 <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
               </div>
             }>
-              <CurrentPageComponent 
-                 {...(currentPage === '/journal' ? { onOpenModal: handleOpenJournalModal } : {})}
-              />
+              <CurrentPageComponent {...pageProps} />
             </Suspense>
           </main>
       </div>

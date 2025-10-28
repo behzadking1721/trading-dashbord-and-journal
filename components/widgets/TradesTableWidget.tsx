@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { JournalEntry } from '../../types';
 import { getJournalEntries } from '../../db';
-import { ArrowUpCircle, ArrowDownCircle, ExternalLink, History, BookOpen } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, ExternalLink, History, BookOpen, Edit2 } from 'lucide-react';
 
 const SkeletonLoader = () => (
     <tbody className="animate-pulse">
@@ -12,6 +12,7 @@ const SkeletonLoader = () => (
                 <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
                 <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-full"></div></td>
                 <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div></td>
             </tr>
         ))}
     </tbody>
@@ -19,7 +20,11 @@ const SkeletonLoader = () => (
 
 type ActiveTab = 'open' | 'history';
 
-const TradesTableWidget: React.FC = () => {
+interface TradesTableWidgetProps {
+    onEditTrade: (entry: JournalEntry) => void;
+}
+
+const TradesTableWidget: React.FC<TradesTableWidgetProps> = ({ onEditTrade }) => {
     const [allTrades, setAllTrades] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<ActiveTab>('open');
@@ -89,6 +94,7 @@ const TradesTableWidget: React.FC = () => {
                             <th scope="col" className="px-3 py-2">ورود</th>
                             <th scope="col" className="px-3 py-2">خروج</th>
                             <th scope="col" className="px-3 py-2">سود/ضرر</th>
+                            <th scope="col" className="px-3 py-2">عملیات</th>
                         </tr>
                     </thead>
                     {loading ? <SkeletonLoader /> : (
@@ -105,9 +111,23 @@ const TradesTableWidget: React.FC = () => {
                                     <td className={`px-3 py-1 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {trade.profitOrLoss != null ? formatNumber(trade.profitOrLoss, 2, '$') : <span className="text-xs text-blue-500">باز</span>}
                                     </td>
+                                    <td className="px-3 py-1">
+                                        {activeTab === 'open' && (
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEditTrade(trade);
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" 
+                                                title="مدیریت معامله"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             )) : (
-                                <tr><td colSpan={5} className="text-center py-4 text-gray-500">
+                                <tr><td colSpan={6} className="text-center py-4 text-gray-500">
                                     {activeTab === 'open' ? 'هیچ پوزیشن بازی وجود ندارد.' : 'هیچ معامله بسته‌شده‌ای یافت نشد.'}
                                 </td></tr>
                             )}
