@@ -21,7 +21,7 @@ const getFromLS = (key: string, defaultValue: any) => {
 };
 
 // Define which widgets belong to which column
-const leftColumnWidgets = ['trading_checklist', 'risk_management', 'todays_performance', 'wallet_overview', 'performance_analytics'];
+const leftColumnWidgets = ['trading_checklist', 'risk_management', 'psychology_analysis', 'todays_performance', 'wallet_overview', 'performance_analytics'];
 const middleColumnWidgets = ['trades_table'];
 const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'hafez_fortune', 'ai_summary', 'weather'];
 
@@ -35,7 +35,7 @@ const Dashboard: React.FC = () => {
             const defaultVisibleWidgets = [
                 'todays_performance', 'performance_analytics', 'wallet_overview', 'risk_management',
                 'trades_table', 'sessions_clock', 'live_prices', 'trading_checklist', 'market_news',
-                'hafez_fortune',
+                'hafez_fortune', 'psychology_analysis',
             ];
 
             const newVisibility: WidgetVisibility = {};

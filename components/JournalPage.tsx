@@ -4,8 +4,10 @@ import { getJournalEntries, deleteJournalEntry } from '../db';
 import { Plus, Edit2, Trash2, Sparkles, RefreshCw, BookOpen, Search, DollarSign, Percent, BarChart2, Target, TrendingUp, TrendingDown, Star } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
-const JournalFormModal = lazy(() => import('./journal/JournalFormModal'));
 
+interface JournalPageProps {
+    onOpenModal: (entry: JournalEntry | null) => void;
+}
 
 const SummaryCard: React.FC<{ title: string; value: string | number; icon: React.ElementType; colorClass?: string; isLoading: boolean; }> = ({ title, value, icon: Icon, colorClass = 'text-gray-800 dark:text-gray-200', isLoading }) => {
   if (isLoading) {
@@ -38,12 +40,10 @@ const StarDisplay: React.FC<{ rating?: number }> = ({ rating = 0 }) => (
 );
 
 
-const JournalPage: React.FC = () => {
+const JournalPage: React.FC<JournalPageProps> = ({ onOpenModal }) => {
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
-    const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
     const [filters, setFilters] = useState(initialFilters);
     const [setups, setSetups] = useState<TradingSetup[]>([]);
 
@@ -65,6 +65,8 @@ const JournalPage: React.FC = () => {
 
     useEffect(() => {
         loadEntries();
+        window.addEventListener('journalUpdated', loadEntries);
+        return () => window.removeEventListener('journalUpdated', loadEntries);
     }, [loadEntries]);
 
     const summaryStats = useMemo(() => {
@@ -108,11 +110,6 @@ const JournalPage: React.FC = () => {
         setFilters(initialFilters);
     };
 
-    const handleOpenModal = (entry: JournalEntry | null = null) => {
-        setEditingEntry(entry);
-        setIsModalOpen(true);
-    }
-
     const handleDelete = async (id: string) => {
         if (window.confirm('آیا از حذف این آیتم مطمئن هستید؟')) {
             try {
@@ -123,10 +120,6 @@ const JournalPage: React.FC = () => {
                 alert("خطا در حذف معامله. لطفا دوباره تلاش کنید.");
             }
         }
-    };
-    
-    const handleSave = async () => {
-        await loadEntries();
     };
     
     const renderStatusBadge = (status?: 'Win' | 'Loss' | 'Breakeven') => {
@@ -151,7 +144,7 @@ const JournalPage: React.FC = () => {
                         <Sparkles size={18} />
                         <span>تحلیل با هوش مصنوعی</span>
                     </button>
-                    <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors">
+                    <button onClick={() => onOpenModal(null)} className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors">
                         <Plus size={18} />
                         <span>ثبت معامله جدید</span>
                     </button>
@@ -203,7 +196,7 @@ const JournalPage: React.FC = () => {
                             {loading ? (
                                 <tr><td colSpan={9} className="text-center py-10"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mx-auto" /></td></tr>
                             ) : filteredEntries.length > 0 ? filteredEntries.map(entry => (
-                                <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => handleOpenModal(entry)}>
+                                <tr key={entry.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => onOpenModal(entry)}>
                                     <td className="px-4 py-3 font-mono">{new Date(entry.date).toLocaleDateString('fa-IR')}</td>
                                     <td className="px-4 py-3 font-semibold">{entry.symbol?.toUpperCase() || '-'}</td>
                                     <td className={`px-4 py-3 flex items-center gap-2 ${entry.side === 'Buy' ? 'text-green-500' : entry.side === 'Sell' ? 'text-red-500' : ''}`}>
@@ -223,7 +216,7 @@ const JournalPage: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center gap-1">
-                                            <button onClick={() => handleOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
+                                            <button onClick={() => onOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
                                                 <Edit2 size={16} />
                                             </button>
                                             <button onClick={() => handleDelete(entry.id)} className="p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="حذف">
@@ -244,7 +237,7 @@ const JournalPage: React.FC = () => {
                                         </p>
                                         {entries.length === 0 && !loading && (
                                             <div className="mt-6">
-                                                <button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors text-sm">
+                                                <button onClick={() => onOpenModal(null)} className="inline-flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-600 transition-colors text-sm">
                                                     <Plus size={16} />
                                                     <span>ثبت معامله جدید</span>
                                                 </button>
@@ -257,12 +250,6 @@ const JournalPage: React.FC = () => {
                     </table>
                 </div>
             </div>
-
-            {isModalOpen && (
-                <Suspense fallback={null}>
-                    <JournalFormModal key={editingEntry?.id || 'new'} onClose={() => setIsModalOpen(false)} onSave={handleSave} entry={editingEntry} />
-                </Suspense>
-            )}
 
             {isAnalysisModalOpen && (
                  <Suspense fallback={

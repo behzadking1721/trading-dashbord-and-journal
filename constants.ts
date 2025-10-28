@@ -2,7 +2,7 @@ import React from 'react';
 import { lazy } from 'react';
 import {
     LineChart, Flame, Globe, History, ShieldAlert,
-    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen, Calendar
+    TrendingUp, ListChecks, Wallet, Sparkles, CloudSun, BookOpen, Calendar, HeartPulse
 } from 'lucide-react';
 import type { JournalFormField } from './types';
 
@@ -19,6 +19,7 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
   hafez_fortune: lazy(() => import('./components/widgets/HafezFortuneWidget')),
   live_prices: lazy(() => import('./components/widgets/LivePricesWidget')),
   todays_performance: lazy(() => import('./components/widgets/TodaysPerformanceWidget')),
+  psychology_analysis: lazy(() => import('./components/widgets/PsychologyAnalysisWidget')),
 };
 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
@@ -34,6 +35,7 @@ export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.E
   hafez_fortune: { title: 'فال حافظ', icon: BookOpen, description: 'یک غزل از دیوان حافظ برای الهام روزانه.' },
   live_prices: { title: 'قیمت‌های زنده', icon: LineChart, description: 'نمایش لحظه‌ای قیمت دارایی‌های منتخب.' },
   todays_performance: { title: 'عملکرد امروز', icon: Calendar, description: 'خلاصه‌ای از عملکرد معاملاتی شما در روز جاری.' },
+  psychology_analysis: { title: 'تحلیل روانشناسی', icon: HeartPulse, description: 'تاثیر اشتباهات و انگیزه‌ها بر نتایج معاملات.'},
 };
 
 

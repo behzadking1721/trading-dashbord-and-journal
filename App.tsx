@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
-import type { Theme, PriceAlert, NewsAlert, NotificationSettings } from './types';
+import type { Theme, PriceAlert, NewsAlert, NotificationSettings, JournalEntry } from './types';
 import { ThemeContext } from './contexts/ThemeContext';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { RefreshCw } from 'lucide-react';
 import { getAlerts, updateAlertStatus } from './db';
-
+import FloatingActionButton from './components/FloatingActionButton';
 
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const JournalPage = lazy(() => import('./components/JournalPage'));
@@ -14,6 +14,7 @@ const CalendarPage = lazy(() => import('./components/CalendarPage'));
 const SettingsPage = lazy(() => import('./components/SettingsPage'));
 const PerformanceAnalyticsPage = lazy(() => import('./components/PerformanceAnalyticsPage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
+const JournalFormModal = lazy(() => import('./components/journal/JournalFormModal'));
 
 
 const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
@@ -38,6 +39,23 @@ const PAGE_TITLES: { [key: string]: string } = {
 const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(window.location.hash.substring(1) || '/');
   const { addNotification } = useNotification();
+  const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+
+  const handleOpenJournalModal = useCallback((entry: JournalEntry | null) => {
+      setEditingEntry(entry);
+      setIsJournalModalOpen(true);
+  }, []);
+
+  const handleCloseJournalModal = useCallback(() => {
+      setIsJournalModalOpen(false);
+      setEditingEntry(null);
+  }, []);
+  
+  const handleSaveJournal = useCallback(() => {
+      handleCloseJournalModal();
+  }, [handleCloseJournalModal]);
+
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -95,10 +113,23 @@ const AppContent: React.FC = () => {
                 <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
               </div>
             }>
-              <CurrentPageComponent />
+              <CurrentPageComponent 
+                 {...(currentPage === '/journal' ? { onOpenModal: handleOpenJournalModal } : {})}
+              />
             </Suspense>
           </main>
       </div>
+       <FloatingActionButton onClick={() => handleOpenJournalModal(null)} />
+        {isJournalModalOpen && (
+            <Suspense fallback={null}>
+                <JournalFormModal
+                    key={editingEntry?.id || 'new-fab'}
+                    onClose={handleCloseJournalModal}
+                    onSave={handleSaveJournal}
+                    entry={editingEntry}
+                />
+            </Suspense>
+        )}
     </>
   );
 };
