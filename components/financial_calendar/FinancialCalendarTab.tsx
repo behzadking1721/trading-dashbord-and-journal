@@ -198,7 +198,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
             setLoading(false);
             setCountdown(REFRESH_INTERVAL_MS);
         }
-    }, [fetchData, market, loading, PINNED_EVENTS_LS_KEY, CALENDAR_ADDED_LS_KEY_PREFIX]);
+    }, [fetchData, market, loading, CALENDAR_ADDED_LS_KEY_PREFIX]);
 
     useEffect(() => {
         loadData(true);
@@ -216,26 +216,28 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     }, [loadData]);
 
     const filteredEvents = useMemo(() => {
-        let dateFilteredEvents = events;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+        let timeBasedEvents: MarketEvent[];
+
         if (filters.time === 'today') {
-            dateFilteredEvents = events.filter(event => new Date(event.time).toDateString() === today.toDateString());
+            timeBasedEvents = events.filter(event => new Date(event.time).toDateString() === today.toDateString());
         } else if (filters.time === 'week') {
             const dayOfWeek = today.getDay();
             const startOfWeek = new Date(today);
             startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Assuming week starts on Monday
+            startOfWeek.setHours(0,0,0,0);
             const endOfWeek = new Date(startOfWeek);
             endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-            dateFilteredEvents = events.filter(event => new Date(event.time) >= startOfWeek && new Date(event.time) <= endOfWeek);
+            endOfWeek.setHours(23,59,59,999);
+            timeBasedEvents = events.filter(event => new Date(event.time) >= startOfWeek && new Date(event.time) <= endOfWeek);
+        } else { // 'all'
+            // For 'all' filter, show all events from the start of today onwards
+            timeBasedEvents = events.filter(event => new Date(event.time) >= today);
         }
-        // 'all' includes all future events
-        dateFilteredEvents = dateFilteredEvents.filter(event => new Date(event.time) >= today);
 
-
-        return dateFilteredEvents.filter(event => {
+        return timeBasedEvents.filter(event => {
             const searchLower = filters.search.toLowerCase();
             const matchSearch = searchLower === '' ||
                 event.event.toLowerCase().includes(searchLower) ||
