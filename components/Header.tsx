@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Clock, Bell, Sun, Moon, Sparkles } from 'lucide-react';
 import type { Theme } from '../types';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { useAppContext } from '../contexts/AppContext';
 
 const AlertsManager = lazy(() => import('./AlertsManager'));
 
@@ -21,7 +21,7 @@ const ThemeIcon: React.FC<{ theme: Theme }> = ({ theme }) => {
 const Header: React.FC<HeaderProps> = ({ title }) => {
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
     const [time, setTime] = useState(new Date());
-    const { theme, toggleTheme } = useContext(ThemeContext);
+    const { theme, toggleTheme } = useAppContext();
 
     useEffect(() => {
         const timerId = setInterval(() => setTime(new Date()), 1000);

@@ -1,4 +1,5 @@
 export type Theme = 'light' | 'dark' | 'glass';
+export type AccentColor = 'indigo' | 'blue' | 'green' | 'red' | 'purple';
 
 export interface EconomicEvent {
   id: string;
@@ -200,8 +201,13 @@ export interface GlobalStockNews {
 
 // --- App Mode Types ---
 export type AppMode = 'simple' | 'advanced';
+export type SettingsTab = 'personalization' | 'dashboard' | 'journal' | 'risk' | 'data';
 
 export interface AppContextType {
   appMode: AppMode;
   setAppMode: (mode: AppMode) => void;
+  theme: Theme;
+  toggleTheme: () => void;
+  accentColor: AccentColor;
+  setAccentColor: (color: AccentColor) => void;
 }
