@@ -23,7 +23,7 @@ const tabColorClasses: { [key: string]: { border: string, text: string, bg: stri
 const SkeletonLoader: React.FC = () => (
     <div className="animate-pulse space-y-2">
         {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
+            <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
         ))}
     </div>
 );
@@ -38,13 +38,13 @@ const Countdown: React.FC<{ targetDate: string }> = ({ targetDate }) => {
     }, []);
 
     const diff = target.getTime() - now.getTime();
-    if (diff <= 0) return <span className="text-xs text-gray-400 dark:text-gray-500">منتشر شد</span>;
+    if (diff <= 0) return <span className="text-sm text-gray-400 dark:text-gray-500">منتشر شد</span>;
 
     const hours = String(Math.floor(diff / 3600000)).padStart(2, '0');
     const minutes = String(Math.floor((diff / 60000) % 60)).padStart(2, '0');
     const seconds = String(Math.floor((diff / 1000) % 60)).padStart(2, '0');
 
-    return <span className="font-mono text-sm tabular-nums">{`${hours}:${minutes}:${seconds}`}</span>;
+    return <span className="font-mono text-base tabular-nums">{`${hours}:${minutes}:${seconds}`}</span>;
 };
 
 const ImpactIndicator: React.FC<{ impact: MarketEvent['impact'] }> = ({ impact }) => {
@@ -55,7 +55,7 @@ const ImpactIndicator: React.FC<{ impact: MarketEvent['impact'] }> = ({ impact }
     };
     return (
         <div className="flex items-center gap-2" title={`اهمیت: ${styles[impact].label}`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${styles[impact].color}`}></span>
+            <span className={`w-3 h-3 rounded-full ${styles[impact].color}`}></span>
         </div>
     );
 };
@@ -133,7 +133,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
 
         return (
             <div className={`rounded-lg border dark:border-gray-700 bg-white/30 dark:bg-gray-800/30 overflow-hidden`}>
-                <div className="grid grid-cols-12 gap-4 items-center p-3 text-xs uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 font-semibold">
+                <div className="grid grid-cols-12 gap-4 items-center p-4 text-sm uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 font-semibold">
                     <span className="col-span-3">زمان</span>
                     <span className="col-span-1">کشور</span>
                     <span className={viewMode === 'expanded' ? "col-span-4" : "col-span-5"}>رویداد</span>
@@ -143,16 +143,16 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
                 </div>
                 <div>
                     {filteredEvents.map(event => (
-                        <div key={event.id} className="grid grid-cols-12 gap-4 items-center p-3 text-sm border-b dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                            <div className="col-span-3 font-semibold">
+                        <div key={event.id} className="grid grid-cols-12 gap-4 items-center p-4 border-b dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <div className="col-span-3 font-semibold text-sm">
                                 {new Date(event.time).toLocaleString('fa-IR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </div>
                             <div className="col-span-1 flex items-center gap-2">
                                 {event.countryCode !== 'CRYPTO' && event.countryCode !== 'OPEC' && <img src={`https://flagcdn.com/w20/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-5 h-auto rounded-sm" />}
                             </div>
-                            <div className={`${viewMode === 'expanded' ? "col-span-4" : "col-span-5"} font-semibold`}>{event.event} ({event.currency})</div>
+                            <div className={`${viewMode === 'expanded' ? "col-span-4" : "col-span-5"} font-semibold text-base`}>{event.event} ({event.currency})</div>
                             <div className="col-span-1 flex justify-center"><ImpactIndicator impact={event.impact} /></div>
-                            {viewMode === 'expanded' && <div className="col-span-2 grid grid-cols-3 gap-1 text-center text-xs font-mono">
+                            {viewMode === 'expanded' && <div className="col-span-2 grid grid-cols-3 gap-1 text-center text-sm font-mono">
                                 <span className={event.actual ? `font-bold ${colors.text}` : 'text-gray-500'}>{event.actual ?? '...'}</span>
                                 <span className="text-gray-500">{event.forecast ?? '-'}</span>
                                 <span className="text-gray-500">{event.previous ?? '-'}</span>
@@ -167,7 +167,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
 
     return (
         <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-gray-100/50 dark:bg-gray-800/20 flex flex-wrap items-center justify-between gap-4">
+            <div className="p-3 rounded-lg bg-gray-100/50 dark:bg-gray-800/20 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="relative">
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

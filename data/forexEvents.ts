@@ -1,6 +1,7 @@
 import type { MarketEvent } from '../types';
 
 const CSV_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.csv?version=ecf12feb3895649f700076a2b3ef16f5';
+const PROXY_URL = 'https://corsproxy.io/?';
 
 const currencyToCountryCode: { [key: string]: string } = {
     USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', CAD: 'CA', AUD: 'AU', NZD: 'NZ', CHF: 'CH', CNY: 'CN',
@@ -79,7 +80,7 @@ const parseCsvLine = (line: string): string[] => {
 
 export const fetchForexEvents = async (): Promise<MarketEvent[]> => {
     try {
-        const response = await fetch(CSV_URL);
+        const response = await fetch(`${PROXY_URL}${CSV_URL}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch calendar data: ${response.statusText}`);
         }

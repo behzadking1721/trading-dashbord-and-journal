@@ -79,13 +79,6 @@ const CalendarPage: React.FC = () => {
 
     return (
         <div className="p-4 sm:p-6 h-full flex flex-col">
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold">تقویم اقتصادی بازارهای مالی</h1>
-                    <p className="text-gray-500 dark:text-gray-400">رویدادهای کلیدی بازارهای فارکس، کریپتو، سهام و کالاها را رصد کنید.</p>
-                </div>
-            </header>
-
             <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
                     {visibleTabs.map(tab => {
