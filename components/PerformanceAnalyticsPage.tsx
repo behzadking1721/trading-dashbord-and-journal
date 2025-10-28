@@ -65,6 +65,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+    const highWaterMarkLineRef = useRef<any | null>(null);
     const { theme } = useAppContext();
 
     // Filters
@@ -219,9 +220,6 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-// FIX: The TypeScript type definitions for `IChartApi` seem to be missing `addAreaSeries` in this environment,
-// though the method should exist at runtime in recent versions of lightweight-charts.
-// Casting to `any` bypasses the compile-time check to resolve the error.
              seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
@@ -245,9 +243,12 @@ const PerformanceAnalyticsPage: React.FC = () => {
         chartRef.current.timeScale().fitContent();
 
         // High-water mark and drawdown lines
-        seriesRef.current!.priceLines().forEach(line => seriesRef.current!.removePriceLine(line));
+        if (highWaterMarkLineRef.current) {
+            seriesRef.current!.removePriceLine(highWaterMarkLineRef.current);
+            highWaterMarkLineRef.current = null;
+        }
         if(peakEquityData.value > firstValue) {
-             seriesRef.current!.createPriceLine({ price: peakEquityData.value, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'اوج سرمایه' });
+             highWaterMarkLineRef.current = seriesRef.current!.createPriceLine({ price: peakEquityData.value, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'اوج سرمایه' });
         }
         
         window.addEventListener('resize', handleResize);
