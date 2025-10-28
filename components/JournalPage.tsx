@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
 import type { JournalEntry, TradingSetup } from '../types';
 import { getJournalEntries, deleteJournalEntry } from '../db';
-import { Plus, Edit2, Trash2, LineChart, Sparkles, RefreshCw, BookOpen, Search, DollarSign, Percent, BarChart2, Target, TrendingUp, TrendingDown, Star } from 'lucide-react';
+import { Plus, Edit2, Trash2, Sparkles, RefreshCw, BookOpen, Search, DollarSign, Percent, BarChart2, Target, TrendingUp, TrendingDown, Star } from 'lucide-react';
 
 const AIAnalysisModal = lazy(() => import('./AIAnalysisModal'));
 const JournalFormModal = lazy(() => import('./journal/JournalFormModal'));
@@ -125,13 +125,6 @@ const JournalPage: React.FC = () => {
         }
     };
     
-    const showTradeOnChart = (trade: JournalEntry) => {
-        if (!trade.entryPrice) return;
-        const event = new CustomEvent('showTradeOnChart', { detail: trade });
-        window.dispatchEvent(event);
-        window.location.hash = '/'; // Navigate to dashboard
-    };
-
     const handleSave = async () => {
         await loadEntries();
     };
@@ -230,11 +223,6 @@ const JournalPage: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center gap-1">
-                                            {entry.entryPrice && (
-                                                <button onClick={() => showTradeOnChart(entry)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
-                                                    <LineChart size={16} />
-                                                </button>
-                                            )}
                                             <button onClick={() => handleOpenModal(entry)} className="p-2 text-gray-500 hover:text-blue-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="ویرایش">
                                                 <Edit2 size={16} />
                                             </button>

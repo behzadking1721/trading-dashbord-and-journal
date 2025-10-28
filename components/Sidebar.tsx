@@ -1,7 +1,5 @@
-import React, { useContext } from 'react';
-import { Home, Book, Calendar, Settings, Sun, Moon, Sparkles, LayoutPanelLeft, BarChart3, FileText } from 'lucide-react';
-import { ThemeContext } from '../contexts/ThemeContext';
-import type { Theme } from '../types';
+import React from 'react';
+import { Home, Book, Calendar, Settings, LayoutPanelLeft, BarChart3, FileText } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -16,17 +14,7 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'تنظیمات' },
 ];
 
-const ThemeIcon: React.FC<{ theme: Theme }> = ({ theme }) => {
-    switch (theme) {
-        case 'light': return <Sun className="w-5 h-5 text-yellow-500" />;
-        case 'dark': return <Moon className="w-5 h-5 text-blue-300" />;
-        case 'glass': return <Sparkles className="w-5 h-5 text-purple-400" />;
-        default: return null;
-    }
-};
-
 const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
 
   return (
     <aside className="w-72 flex-shrink-0 bg-white/30 dark:bg-slate-900/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-slate-700/50 flex flex-col p-6 shadow-2xl">
@@ -53,16 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
           ))}
         </ul>
       </nav>
-      <div className="mt-auto">
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-center gap-4 p-4 rounded-2xl hover:bg-gray-200 dark:hover:bg-slate-700/50 transition-colors"
-          title="تغییر تم"
-        >
-          <ThemeIcon theme={theme} />
-          <span className="text-sm">تغییر تم</span>
-        </button>
-      </div>
+      {/* Theme switcher removed from here */}
     </aside>
   );
 };

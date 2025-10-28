@@ -3,6 +3,7 @@ import type { Theme, PriceAlert, NewsAlert, NotificationSettings } from './types
 import { ThemeContext } from './contexts/ThemeContext';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import { RefreshCw } from 'lucide-react';
 import { getAlerts, updateAlertStatus } from './db';
 
@@ -22,6 +23,15 @@ const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
   '/settings': SettingsPage,
   '/performance': PerformanceAnalyticsPage,
   '/reports': ReportsPage,
+};
+
+const PAGE_TITLES: { [key: string]: string } = {
+    '/': 'داشبورد',
+    '/journal': 'ژورنال معاملاتی',
+    '/calendar': 'تقویم اقتصادی',
+    '/settings': 'تنظیمات',
+    '/performance': 'تحلیل عملکرد',
+    '/reports': 'گزارش‌ها',
 };
 
 
@@ -73,18 +83,22 @@ const AppContent: React.FC = () => {
 
 
   const CurrentPageComponent = pages[currentPage] || pages['/'];
+  const pageTitle = PAGE_TITLES[currentPage] || 'داشبورد';
   return (
     <>
       <Sidebar currentPage={currentPage} />
-      <main className="flex-1 min-w-0 overflow-y-auto">
-        <Suspense fallback={
-          <div className="w-full h-screen flex items-center justify-center">
-            <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
-          </div>
-        }>
-          <CurrentPageComponent />
-        </Suspense>
-      </main>
+      <div className="flex flex-col flex-1 overflow-hidden">
+          <Header title={pageTitle} />
+          <main className="flex-1 min-w-0 overflow-y-auto">
+            <Suspense fallback={
+              <div className="w-full h-full flex items-center justify-center">
+                <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
+              </div>
+            }>
+              <CurrentPageComponent />
+            </Suspense>
+          </main>
+      </div>
     </>
   );
 };
@@ -134,7 +148,7 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={themeContextValue}>
       <NotificationProvider>
-          <div className={`flex h-screen overflow-hidden transition-colors duration-300 bg-slate-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200`}>
+          <div className={`flex h-screen overflow-hidden transition-colors duration-300 text-gray-800 dark:text-gray-200`}>
               <AppContent />
           </div>
       </NotificationProvider>

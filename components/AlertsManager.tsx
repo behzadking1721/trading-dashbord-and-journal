@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Trash2, X } from 'lucide-react';
-import type { Alert, PriceAlert, NewsAlert } from '../types';
+import type { Alert, NewsAlert } from '../types';
 import { getAlerts, deleteAlert } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -52,18 +52,6 @@ const AlertsManager: React.FC<AlertsManagerProps> = ({ isOpen, onClose }) => {
     );
 };
 
-const PriceAlertItem: React.FC<{ alert: PriceAlert; onDelete: (id: string) => void }> = ({ alert, onDelete }) => (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-700/50">
-        <div>
-            <p className="font-bold">{alert.symbol || 'نامشخص'}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-                اگر قیمت به {alert.condition === 'crosses_above' ? 'بالای' : 'پایین'} <span className="font-mono">{alert.targetPrice || '?'}</span> رسید.
-            </p>
-        </div>
-        <button onClick={() => onDelete(alert.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
-    </div>
-);
-
 const NewsAlertItem: React.FC<{ alert: NewsAlert; onDelete: (id: string) => void }> = ({ alert, onDelete }) => (
     <div className="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-700/50">
         <div>
@@ -81,9 +69,6 @@ const AlertsList: React.FC<{ active: Alert[], triggered: Alert[], onDelete: (id:
     if (loading) return <div>در حال بارگذاری...</div>;
     
     const renderAlert = (alert: Alert) => {
-        if (alert.type === 'price') {
-            return <PriceAlertItem key={alert.id} alert={alert as PriceAlert} onDelete={onDelete} />;
-        }
         if (alert.type === 'news') {
             return <NewsAlertItem key={alert.id} alert={alert as NewsAlert} onDelete={onDelete} />;
         }
