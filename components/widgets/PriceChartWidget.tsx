@@ -3,6 +3,15 @@ import { createChart, IChartApi, ISeriesApi, LineStyle, IPriceLine } from 'light
 import type { OHLCData, JournalEntry } from '../../types';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
+// Fix: Declare a global interface for window.currentPrices to inform TypeScript of its existence and structure.
+declare global {
+  interface Window {
+    currentPrices: { [symbol: string]: { price: number; lastPrice: number } };
+  }
+}
+// Fix: Initialize window.currentPrices if it doesn't exist to prevent runtime errors.
+window.currentPrices = window.currentPrices || {};
+
 const generateMockData = (numBars = 100): OHLCData[] => {
   const data: OHLCData[] = [];
   let lastClose = 100;

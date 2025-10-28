@@ -85,7 +85,7 @@ const SettingsPage: React.FC = () => {
     const [editingSetup, setEditingSetup] = useState<TradingSetup | null>(null);
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
     const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-        globalEnable: true, priceAlerts: true, newsAlerts: true, cryptoNewsAlerts: true, stockNewsAlerts: true,
+        globalEnable: true, newsAlerts: true, cryptoNewsAlerts: true, stockNewsAlerts: true,
     });
     const [formSettings, setFormSettings] = useState<JournalFormSettings>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -196,7 +196,7 @@ const SettingsPage: React.FC = () => {
                  <Card title="مدیریت اعلان‌ها" icon={Bell}>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between"><div><p className="font-semibold text-sm">فعال‌سازی کلی اعلان‌ها</p><p className="text-xs text-gray-500">فعال یا غیرفعال کردن تمام هشدارها</p></div><ToggleSwitch checked={notificationSettings.globalEnable} onChange={c => handleNotificationSettingChange('globalEnable', c)} /></div>
-                        {[ {key: 'priceAlerts', label: 'هشدار قیمت'}, {key: 'newsAlerts', label: 'هشدار رویدادهای اقتصادی'} ].map(item => (
+                        {[ {key: 'newsAlerts', label: 'هشدار رویدادهای اقتصادی'} ].map(item => (
                             <div key={item.key} className={`flex items-center justify-between transition-opacity ${!notificationSettings.globalEnable ? 'opacity-50' : ''}`}>
                                 <div><p className="font-semibold text-sm">{item.label}</p></div>
                                 <ToggleSwitch checked={!!notificationSettings[item.key as keyof NotificationSettings]} onChange={c => handleNotificationSettingChange(item.key as keyof NotificationSettings, c)} disabled={!notificationSettings.globalEnable} />

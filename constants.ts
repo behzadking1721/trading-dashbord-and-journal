@@ -7,7 +7,6 @@ import {
 import type { JournalFormField } from './types';
 
 export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
-  price_chart: lazy(() => import('./components/widgets/PriceChartWidget')),
   market_news: lazy(() => import('./components/widgets/NewsFeedWidget')),
   sessions_clock: lazy(() => import('./components/widgets/SessionsClockWidget')),
   trades_table: lazy(() => import('./components/widgets/TradesTableWidget')),
@@ -21,10 +20,9 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
 };
 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
-  price_chart: { title: 'نمودار قیمت', icon: LineChart, description: 'نمودار تعاملی قیمت برای تحلیل تکنیکال.' },
   market_news: { title: 'اخبار بازار', icon: Flame, description: 'اخبار لحظه‌ای بازارهای فارکس، کریپتو و بورس.' },
   sessions_clock: { title: 'سشن‌های معاملاتی', icon: Globe, description: 'وضعیت بازارهای جهانی و ساعت سشن‌ها.' },
-  trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورنال.' },
+  trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورناال.' },
   risk_management: { title: 'مدیریت ریسک', icon: ShieldAlert, description: 'تحلیل ریسک فعال و توزیع نمادها.' },
   performance_analytics: { title: 'تحلیل عملکرد', icon: TrendingUp, description: 'شاخص‌های کلیدی عملکرد مانند نرخ برد و R/R.' },
   trading_checklist: { title: 'چک‌لیست ترید', icon: ListChecks, description: 'چک‌لیست ستاپ معاملاتی فعال شما.' },

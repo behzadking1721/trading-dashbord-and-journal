@@ -15,8 +15,7 @@ const WIDGET_LAYOUT_CONFIG_LG: { [key: string]: { col: string; row: string; } } 
   performance_analytics: { col: '1 / 4', row: '1 / 2' },
   wallet_overview:       { col: '1 / 4', row: '2 / 3' },
   risk_management:       { col: '1 / 4', row: '3 / 4' },
-  price_chart:           { col: '4 / 10', row: '1 / 3' },
-  trades_table:          { col: '4 / 10', row: '3 / 4' },
+  trades_table:          { col: '4 / 10', row: '1 / 4' },
   sessions_clock:        { col: '10 / 13', row: '1 / 2' },
   trading_checklist:     { col: '10 / 13', row: '2 / 3' },
   market_news:           { col: '10 / 13', row: '3 / 4' },
@@ -27,32 +26,30 @@ const WIDGET_LAYOUT_CONFIG_LG: { [key: string]: { col: string; row: string; } } 
 
 // For MEDIUM screens (tablets) - 8 columns
 const WIDGET_LAYOUT_CONFIG_MD: { [key: string]: { col: string; row: string; } } = {
-  price_chart:           { col: '1 / 9', row: '1 / 2' },
-  trades_table:          { col: '1 / 9', row: '2 / 3' },
-  performance_analytics: { col: '1 / 5', row: '3 / 4' },
-  wallet_overview:       { col: '5 / 9', row: '3 / 4' },
-  risk_management:       { col: '1 / 5', row: '4 / 5' },
-  sessions_clock:        { col: '5 / 9', row: '4 / 5' },
-  trading_checklist:     { col: '1 / 5', row: '5 / 6' },
-  market_news:           { col: '5 / 9', row: '5 / 6' },
-  ai_summary:            { col: '1 / 9', row: '6 / 7' },
-  weather:               { col: '1 / 9', row: '7 / 8' },
-  hafez_fortune:         { col: '1 / 9', row: '8 / 9' },
+  trades_table:          { col: '1 / 9', row: '1 / 2' },
+  performance_analytics: { col: '1 / 5', row: '2 / 3' },
+  wallet_overview:       { col: '5 / 9', row: '2 / 3' },
+  risk_management:       { col: '1 / 5', row: '3 / 4' },
+  sessions_clock:        { col: '5 / 9', row: '3 / 4' },
+  trading_checklist:     { col: '1 / 5', row: '4 / 5' },
+  market_news:           { col: '5 / 9', row: '4 / 5' },
+  ai_summary:            { col: '1 / 9', row: '5 / 6' },
+  weather:               { col: '1 / 9', row: '6 / 7' },
+  hafez_fortune:         { col: '1 / 9', row: '7 / 8' },
 };
 
 // For SMALL screens (mobile) - 4 columns, single column layout
 const WIDGET_LAYOUT_CONFIG_SM: { [key: string]: { col: string; row: string; } } = {
-  price_chart:           { col: '1 / 5', row: '1 / 2' },
-  performance_analytics: { col: '1 / 5', row: '2 / 3' },
-  trades_table:          { col: '1 / 5', row: '3 / 4' },
-  wallet_overview:       { col: '1 / 5', row: '4 / 5' },
-  risk_management:       { col: '1 / 5', row: '5 / 6' },
-  sessions_clock:        { col: '1 / 5', row: '6 / 7' },
-  trading_checklist:     { col: '1 / 5', row: '7 / 8' },
-  market_news:           { col: '1 / 5', row: '8 / 9' },
-  ai_summary:            { col: '1 / 5', row: '9 / 10' },
-  weather:               { col: '1 / 5', row: '10 / 11' },
-  hafez_fortune:         { col: '1 / 5', row: '11 / 12' },
+  performance_analytics: { col: '1 / 5', row: '1 / 2' },
+  trades_table:          { col: '1 / 5', row: '2 / 3' },
+  wallet_overview:       { col: '1 / 5', row: '3 / 4' },
+  risk_management:       { col: '1 / 5', row: '4 / 5' },
+  sessions_clock:        { col: '1 / 5', row: '5 / 6' },
+  trading_checklist:     { col: '1 / 5', row: '6 / 7' },
+  market_news:           { col: '1 / 5', row: '7 / 8' },
+  ai_summary:            { col: '1 / 5', row: '8 / 9' },
+  weather:               { col: '1 / 5', row: '9 / 10' },
+  hafez_fortune:         { col: '1 / 5', row: '10 / 11' },
 };
 
 const GRID_STYLES = {
@@ -118,8 +115,7 @@ const Dashboard: React.FC = () => {
             
             const defaultVisibleWidgets = [
                 'performance_analytics', 'wallet_overview', 'risk_management',
-                'price_chart', 'trades_table', 'sessions_clock',
-                'trading_checklist', 'market_news',
+                'trades_table', 'sessions_clock', 'trading_checklist', 'market_news',
             ];
 
             const newVisibility: WidgetVisibility = {};

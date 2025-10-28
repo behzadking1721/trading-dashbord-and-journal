@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { JournalEntry } from '../../types';
 import { getLatestJournalEntries } from '../../db';
-import { PlusCircle, ArrowUpCircle, ArrowDownCircle, ExternalLink, LineChart } from 'lucide-react';
+import { PlusCircle, ArrowUpCircle, ArrowDownCircle, ExternalLink } from 'lucide-react';
 
 const SkeletonLoader = () => (
     <tbody className="animate-pulse">
@@ -48,14 +48,6 @@ const TradesTableWidget: React.FC = () => {
     return `${prefix}${num.toFixed(digits)}`;
   };
   
-  const showTradeOnChart = (trade: JournalEntry) => {
-    if(!trade.entryPrice) return;
-    const event = new CustomEvent('showTradeOnChart', { detail: trade });
-    window.dispatchEvent(event);
-    window.location.hash = '/';
-  };
-
-
   return (
     <div className="flex flex-col h-full">
         <div className="flex justify-between items-center mb-2">
@@ -77,7 +69,6 @@ const TradesTableWidget: React.FC = () => {
               <th scope="col" className="px-4 py-2">ورود</th>
               <th scope="col" className="px-4 py-2">خروج</th>
               <th scope="col" className="px-4 py-2">سود/ضرر</th>
-              <th scope="col" className="px-4 py-2">عملیات</th>
             </tr>
           </thead>
           {loading ? <SkeletonLoader /> : (
@@ -94,16 +85,9 @@ const TradesTableWidget: React.FC = () => {
                   <td className={`px-4 py-2 font-bold font-mono ${trade.profitOrLoss == null ? '' : trade.profitOrLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {trade.profitOrLoss != null ? formatNumber(trade.profitOrLoss, 2, '$') : <span className="text-xs text-blue-500">باز</span>}
                   </td>
-                  <td className="px-4 py-2">
-                    {trade.entryPrice && (
-                        <button onClick={() => showTradeOnChart(trade)} className="p-2 text-gray-500 hover:text-indigo-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600" title="نمایش روی چارت">
-                            <LineChart size={16} />
-                        </button>
-                    )}
-                  </td>
                 </tr>
               )) : (
-                  <tr><td colSpan={6} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
+                  <tr><td colSpan={5} className="text-center py-4 text-gray-500">هیچ معامله‌ای یافت نشد.</td></tr>
               )}
             </tbody>
           )}

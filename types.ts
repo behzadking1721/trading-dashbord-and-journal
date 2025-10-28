@@ -113,7 +113,6 @@ export type Alert = PriceAlert | NewsAlert;
 // Types for Settings
 export interface NotificationSettings {
     globalEnable: boolean;
-    priceAlerts: boolean;
     newsAlerts: boolean;
     cryptoNewsAlerts?: boolean;
     stockNewsAlerts?: boolean;

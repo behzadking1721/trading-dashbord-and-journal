@@ -24,14 +24,6 @@ const pages: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
   '/reports': ReportsPage,
 };
 
-// Declare a global variable for current prices for the alert system
-declare global {
-  interface Window {
-    currentPrices: { [symbol: string]: { price: number; lastPrice?: number } };
-  }
-}
-window.currentPrices = window.currentPrices || {};
-
 
 const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(window.location.hash.substring(1) || '/');
@@ -49,9 +41,9 @@ const AppContent: React.FC = () => {
         const checkAlerts = async () => {
             let settings: NotificationSettings;
             try {
-                settings = JSON.parse(localStorage.getItem('notification-settings') || 'null') || { globalEnable: true, priceAlerts: true, newsAlerts: true };
+                settings = JSON.parse(localStorage.getItem('notification-settings') || 'null') || { globalEnable: true, newsAlerts: true };
             } catch (e) {
-                settings = { globalEnable: true, priceAlerts: true, newsAlerts: true };
+                settings = { globalEnable: true, newsAlerts: true };
             }
 
             if (!settings.globalEnable) {
@@ -62,25 +54,7 @@ const AppContent: React.FC = () => {
             const now = new Date();
 
             for (const alert of activeAlerts) {
-                if (alert.type === 'price' && settings.priceAlerts) {
-                    const priceAlert = alert as PriceAlert;
-                    const priceInfo = window.currentPrices[priceAlert.symbol];
-                    if (!priceInfo || !priceInfo.lastPrice) continue;
-
-                    const { price, lastPrice } = priceInfo;
-                    
-                    let triggered = false;
-                    if (priceAlert.condition === 'crosses_above' && lastPrice < priceAlert.targetPrice && price >= priceAlert.targetPrice) {
-                        triggered = true;
-                    } else if (priceAlert.condition === 'crosses_below' && lastPrice > priceAlert.targetPrice && price <= priceAlert.targetPrice) {
-                        triggered = true;
-                    }
-
-                    if (triggered) {
-                        addNotification(`هشدار قیمت ${priceAlert.symbol}: از ${priceAlert.targetPrice} عبور کرد.`, 'info');
-                        await updateAlertStatus(alert.id, 'triggered');
-                    }
-                } else if (alert.type === 'news' && settings.newsAlerts) {
+                if (alert.type === 'news' && settings.newsAlerts) {
                     const newsAlert = alert as NewsAlert;
                     const eventTime = new Date(newsAlert.eventTime);
                     const diffMinutes = (eventTime.getTime() - now.getTime()) / (1000 * 60);
