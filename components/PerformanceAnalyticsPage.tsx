@@ -63,9 +63,6 @@ const PerformanceAnalyticsPage: React.FC = () => {
     const [setups, setSetups] = useState<TradingSetup[]>([]);
     const [loading, setLoading] = useState(true);
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartRef = useRef<IChartApi | null>(null);
-    const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
-    const highWaterMarkLineRef = useRef<any | null>(null);
     const { theme } = useAppContext();
 
     // Filters
@@ -202,57 +199,55 @@ const PerformanceAnalyticsPage: React.FC = () => {
     }, [filteredEntries]);
 
     useEffect(() => {
-        if (!chartContainerRef.current || !performanceData) {
-             if (chartRef.current) {
-                chartRef.current.remove();
-                chartRef.current = null;
+        const chartContainer = chartContainerRef.current;
+        if (!chartContainer || !performanceData) {
+            if(chartContainer) {
+                chartContainer.innerHTML = '';
             }
             return;
-        };
-
-        const { equityData, peakEquityData, maxDrawdownPeriod } = performanceData;
-        const handleResize = () => chartRef.current?.applyOptions({ width: chartContainerRef.current!.clientWidth });
-        
-        if (!chartRef.current) {
-             chartRef.current = createChart(chartContainerRef.current, {
-                width: chartContainerRef.current.clientWidth,
-                height: 350,
-                layout: { background: { color: 'transparent' } },
-                timeScale: { timeVisible: true, secondsVisible: false },
-             });
-             seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
+        const chart = createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 350,
+            layout: { background: { color: 'transparent' } },
+            timeScale: { timeVisible: true, secondsVisible: false },
+        });
+
         const isDark = theme !== 'light';
-        chartRef.current.applyOptions({
+        chart.applyOptions({
             layout: { textColor: isDark ? '#d1d5db' : '#1f2937' },
             grid: { vertLines: { color: 'transparent' }, horzLines: { color: isDark ? '#374151' : '#e5e7eb' } },
         });
 
+        // FIX: The type definitions for lightweight-charts might be incomplete in this environment.
+        // The 'addAreaSeries' method is standard, so casting to 'any' bypasses the incorrect TypeScript error.
+        const areaSeries = (chart as any).addAreaSeries();
+        const { equityData, peakEquityData } = performanceData;
         const lastValue = equityData[equityData.length - 1]?.value ?? 0;
         const firstValue = equityData[0]?.value ?? 0;
         const color = lastValue >= firstValue ? '#22c55e' : '#ef4444';
         
-        seriesRef.current!.applyOptions({
+        areaSeries.applyOptions({
             lineColor: color,
             topColor: `${color}55`,
             bottomColor: `${color}00`,
         });
         
-        seriesRef.current!.setData(equityData);
-        chartRef.current.timeScale().fitContent();
+        areaSeries.setData(equityData);
+        chart.timeScale().fitContent();
 
-        // High-water mark and drawdown lines
-        if (highWaterMarkLineRef.current) {
-            seriesRef.current!.removePriceLine(highWaterMarkLineRef.current);
-            highWaterMarkLineRef.current = null;
-        }
-        if(peakEquityData.value > firstValue) {
-             highWaterMarkLineRef.current = seriesRef.current!.createPriceLine({ price: peakEquityData.value, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'اوج سرمایه' });
+        if (peakEquityData.value > firstValue) {
+            areaSeries.createPriceLine({ price: peakEquityData.value, color: '#3b82f6', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'اوج سرمایه' });
         }
         
+        const handleResize = () => chart.applyOptions({ width: chartContainer.clientWidth });
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            chart.remove();
+        };
     }, [performanceData, theme]);
 
 
