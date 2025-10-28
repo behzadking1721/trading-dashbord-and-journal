@@ -2,7 +2,6 @@ import type { MarketEvent } from '../types';
 
 // The new, reliable JSON endpoint provided by the user.
 const JSON_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=ecf12feb3895649f700076a2b3ef16f5';
-const PROXY_URL = 'https://corsproxy.io/?';
 
 const currencyToCountryCode: { [key: string]: string } = {
     USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', CAD: 'CA', AUD: 'AU', NZD: 'NZ', CHF: 'CH', CNY: 'CN',
@@ -19,7 +18,7 @@ const parseImpact = (impact: string): MarketEvent['impact'] => {
 
 export const fetchForexEvents = async (): Promise<MarketEvent[]> => {
     try {
-        const response = await fetch(`${PROXY_URL}${encodeURIComponent(JSON_URL)}`);
+        const response = await fetch(JSON_URL);
         if (!response.ok) {
             throw new Error(`Failed to fetch calendar data: ${response.statusText}`);
         }
@@ -29,20 +28,22 @@ export const fetchForexEvents = async (): Promise<MarketEvent[]> => {
             throw new Error('Invalid data format received from API.');
         }
 
-        const events: MarketEvent[] = jsonData.map((item: any, index: number) => {
-            const currency = item.country || 'N/A';
-            return {
-                id: `ff-json-${item.date}-${currency}-${index}`,
-                time: item.date, // Already in ISO 8601 format
-                countryCode: currencyToCountryCode[currency] || currency,
-                currency: currency,
-                event: item.title,
-                impact: parseImpact(item.impact),
-                actual: item.actual || null,
-                forecast: item.forecast || null,
-                previous: item.previous || null,
-            };
-        });
+        const events: MarketEvent[] = jsonData
+            .filter(item => item && typeof item.date === 'string' && !isNaN(new Date(item.date).getTime()))
+            .map((item: any, index: number) => {
+                const currency = item.country || 'N/A';
+                return {
+                    id: `ff-json-${item.date}-${currency}-${index}`,
+                    time: item.date, // Already in ISO 8601 format
+                    countryCode: currencyToCountryCode[currency] || currency,
+                    currency: currency,
+                    event: item.title,
+                    impact: parseImpact(item.impact),
+                    actual: item.actual || null,
+                    forecast: item.forecast || null,
+                    previous: item.previous || null,
+                };
+            });
         
         // Sort events by time, as the API might not guarantee order
         return events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
