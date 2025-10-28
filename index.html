@@ -40,6 +40,15 @@
       .prose h1, .prose h2, .prose h3, .prose h4, .prose strong {
         color: inherit;
       }
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .overflow-auto::-webkit-scrollbar, .overflow-y-auto::-webkit-scrollbar {
+        display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .overflow-auto, .overflow-y-auto {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
     </style>
   <script>
     tailwind.config = {
