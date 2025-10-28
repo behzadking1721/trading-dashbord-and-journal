@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
 import { createChart, IChartApi, ISeriesApi, Time, PriceLineOptions, AreaData, WhitespaceData, AreaSeriesOptions, DeepPartial, AreaStyleOptions, SeriesOptionsCommon } from 'lightweight-charts';
-import { getJournalEntries } from '../db';
-import type { JournalEntry, TradingSetup } from '../types';
+import { getJournalEntries } from '../../db';
+import type { JournalEntry, TradingSetup } from '../../types';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Percent, Target, ChevronsDown, ChevronsUp, Activity, Filter, BarChartHorizontal, Briefcase } from 'lucide-react';
 
@@ -198,8 +198,11 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             // FIX: `addSeries` does not accept a string argument. Using the correct `addAreaSeries()` method to create the chart series.
-             seriesRef.current = chartRef.current.addAreaSeries();
+             // FIX: The user's environment reports that 'addAreaSeries' does not exist.
+             // Switching to 'addSeries' as suggested by the error message, and casting the result
+             // to match the expected modern series API type. This might be necessary due to
+             // conflicting library versions or type definitions.
+             seriesRef.current = (chartRef.current as any).addSeries('Area') as ISeriesApi<'Area'>;
         }
 
         const isDark = theme !== 'light';

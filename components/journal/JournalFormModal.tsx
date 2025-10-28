@@ -146,6 +146,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     const [formSettings, setFormSettings] = useState<JournalFormSettings>({});
     
     const getInitialState = useCallback((): FormState => {
+        // Priority 1: If editing an existing entry, use its data.
         if (entry) {
             return {
                 ...initialEmptyState,
@@ -153,7 +154,21 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 manualExitPrice: entry.outcome === 'Manual Exit' && entry.exitPrice ? entry.exitPrice : undefined,
             };
         }
+    
+        // Priority 2: If there's a draft for a new entry, use it.
+        try {
+            const draft = localStorage.getItem(DRAFT_KEY);
+            if (draft) {
+                const parsedDraft = JSON.parse(draft);
+                if (!parsedDraft.psychology) parsedDraft.psychology = {}; // Ensure psychology object exists
+                return parsedDraft;
+            }
+        } catch (e) {
+            console.error("Failed to parse journal draft", e);
+            localStorage.removeItem(DRAFT_KEY); // Clear corrupted draft
+        }
 
+        // Priority 3: If no entry and no draft, create state from default settings.
         const stateFromDefaults: FormState = { ...initialEmptyState, psychology: {} };
         Object.keys(formSettings).forEach(key => {
             const fieldKey = key as JournalFormField;
@@ -166,7 +181,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
     }, [entry, formSettings]);
     
     const [formData, setFormData] = useState<FormState>(initialEmptyState);
-    const [draftLoaded, setDraftLoaded] = useState(false);
+    const [initializationComplete, setInitializationComplete] = useState(false);
     
     const [manualSide, setManualSide] = useState<'Buy' | 'Sell' | null>(entry?.side || null);
     const [setups, setSetups] = useState<TradingSetup[]>([]);
@@ -237,11 +252,6 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 if (savedSetups) {
                     const parsedSetups = JSON.parse(savedSetups);
                     setSetups(parsedSetups);
-                    
-                    const activeSetup = parsedSetups.find((s: TradingSetup) => s.isActive);
-                    if (!entry && activeSetup) {
-                        setFormData(prev => ({ ...prev, setupId: activeSetup.id }));
-                    }
                 }
                 
                 // Load Risk Settings
@@ -266,17 +276,7 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
                 }
                 setWinStreak(currentStreak);
 
-                // Load Draft if exists and it's a new entry
-                if (!entry) {
-                    const draft = localStorage.getItem(DRAFT_KEY);
-                    if (draft) {
-                        const parsedDraft = JSON.parse(draft);
-                        // Make sure we have a default psychology object
-                        if (!parsedDraft.psychology) parsedDraft.psychology = {};
-                        setFormData(parsedDraft);
-                    }
-                }
-                 setDraftLoaded(true);
+                setInitializationComplete(true);
 
             } catch (e) {
                 console.error("Failed to load modal data", e);
@@ -291,20 +291,20 @@ const JournalFormModal: React.FC<{ onClose: () => void; onSave: () => void; entr
 
     }, [entry, updateRiskSettings]);
 
-    // This effect runs after draft and settings are loaded to initialize the form state
+    // This effect runs after all data is loaded to initialize the form state correctly
     useEffect(() => {
-        if(draftLoaded) {
+        if(initializationComplete) {
             setFormData(getInitialState());
         }
-    }, [draftLoaded, getInitialState]);
+    }, [initializationComplete, getInitialState]);
 
 
     // Save draft on every change for new entries
     useEffect(() => {
-        if (!entry && draftLoaded) {
+        if (!entry && initializationComplete) {
             try { localStorage.setItem(DRAFT_KEY, JSON.stringify(formData)); } catch (e) { console.warn(e); }
         }
-    }, [formData, entry, draftLoaded]);
+    }, [formData, entry, initializationComplete]);
 
     const handleInputChange = (field: keyof FormState | string, value: any) => {
         const newState = { ...formData };

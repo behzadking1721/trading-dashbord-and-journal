@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Home, Book, Calendar, Settings, LayoutPanelLeft, BarChart3, FileText } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 interface SidebarProps {
   currentPage: string;
@@ -15,6 +16,14 @@ const navItems = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
+  const { appMode } = useAppContext();
+
+  const visibleNavItems = useMemo(() => {
+    if (appMode === 'simple') {
+      return navItems.filter(item => !['/performance', '/reports'].includes(item.href));
+    }
+    return navItems;
+  }, [appMode]);
 
   return (
     <aside className="w-72 flex-shrink-0 bg-white/30 dark:bg-slate-900/50 backdrop-blur-lg border-l border-gray-200/20 dark:border-slate-700/50 flex flex-col p-6 shadow-2xl">
@@ -24,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
       </div>
       <nav className="flex-grow">
         <ul>
-          {navItems.map(item => (
+          {visibleNavItems.map(item => (
             <li key={item.href}>
               <a
                 href={`#${item.href}`}

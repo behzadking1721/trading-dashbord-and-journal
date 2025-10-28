@@ -191,3 +191,11 @@ export interface GlobalStockNews {
     summary: string;
     datetime: number; // unix timestamp
 }
+
+// --- App Mode Types ---
+export type AppMode = 'simple' | 'advanced';
+
+export interface AppContextType {
+  appMode: AppMode;
+  setAppMode: (mode: AppMode) => void;
+}

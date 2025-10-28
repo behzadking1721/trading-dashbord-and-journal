@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, Edit3, RefreshCw } from 'lucide-react';
+import { Save, Plus, Trash2, Edit, CheckCircle, Settings as SettingsIcon, LayoutDashboard, Database, Upload, Download, Bell, Edit3, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import type { TradingSetup, WidgetVisibility, JournalEntry, NotificationSettings, RiskSettings, JournalFormSettings, FormFieldSetting, JournalFormField } from '../types';
 import { WIDGET_DEFINITIONS, JOURNAL_FORM_FIELDS } from '../constants';
 import { getJournalEntries, addJournalEntry } from '../db';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAppContext } from '../contexts/AppContext';
 import Card from './shared/Card';
 
 const SetupFormModal = lazy(() => import('./settings/SetupFormModal'));
@@ -74,6 +75,7 @@ const AntiMartingaleVisualizer: React.FC<{
 
 const SettingsPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const { appMode, setAppMode } = useAppContext();
     const [riskSettings, setRiskSettings] = useState<RiskSettings>({
         accountBalance: 10000,
         strategy: 'fixed_percent',
@@ -173,7 +175,7 @@ const SettingsPage: React.FC = () => {
     );
 
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
-        { id: 'general', label: 'عمومی', icon: SettingsIcon },
+        { id: 'general', label: 'عمومی', icon: SlidersHorizontal },
         { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
         { id: 'journal', label: 'ژورنال', icon: Edit3 },
         { id: 'data', label: 'مدیریت داده‌ها', icon: Database },
@@ -182,6 +184,20 @@ const SettingsPage: React.FC = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'general': return (<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <div className="lg:col-span-2">
+                    <Card title="حالت برنامه" icon={SettingsIcon}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="font-semibold text-sm">حالت پیشرفته</p>
+                                <p className="text-xs text-gray-500">ویجت‌ها و صفحات تحلیلی بیشتر را فعال کنید.</p>
+                            </div>
+                            <ToggleSwitch
+                                checked={appMode === 'advanced'}
+                                onChange={(isChecked) => setAppMode(isChecked ? 'advanced' : 'simple')}
+                            />
+                        </div>
+                    </Card>
+                 </div>
                  <Card title="مدیریت سرمایه و ریسک" icon={SettingsIcon}>
                     <div className="space-y-4">
                         <div><label className="block text-sm font-medium mb-1">موجودی حساب ($)</label><input type="number" value={riskSettings.accountBalance} onChange={e => handleRiskSettingsChange('accountBalance', parseFloat(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="مثال: 10000" /></div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from
 import type { Theme, PriceAlert, NewsAlert, NotificationSettings, JournalEntry } from './types';
 import { ThemeContext } from './contexts/ThemeContext';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
+import { useAppContext } from './contexts/AppContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { RefreshCw } from 'lucide-react';
@@ -41,6 +42,7 @@ const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
   const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const { appMode } = useAppContext();
 
   const handleOpenJournalModal = useCallback((entry: JournalEntry | null) => {
       setEditingEntry(entry);
@@ -64,6 +66,13 @@ const AppContent: React.FC = () => {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+  
+  useEffect(() => {
+    const advancedPages = ['/performance', '/reports'];
+    if (appMode === 'simple' && advancedPages.includes(currentPage)) {
+        window.location.hash = '/';
+    }
+  }, [currentPage, appMode]);
 
   useEffect(() => {
         const checkAlerts = async () => {
@@ -106,6 +115,23 @@ const AppContent: React.FC = () => {
   const pageProps: { onOpenModal?: (entry: JournalEntry | null) => void } = {};
   if (currentPage === '/' || currentPage === '/journal') {
       pageProps.onOpenModal = handleOpenJournalModal;
+  }
+  
+  // Prevent rendering advanced pages while redirecting in simple mode
+  if (appMode === 'simple' && ['/performance', '/reports'].includes(currentPage)) {
+      return (
+           <>
+              <Sidebar currentPage={currentPage} />
+              <div className="flex flex-col flex-1 overflow-hidden">
+                  <Header title="در حال بارگذاری..." />
+                   <main className="flex-1 min-w-0 overflow-y-auto">
+                     <div className="w-full h-full flex items-center justify-center">
+                        <RefreshCw className="w-10 h-10 animate-spin text-indigo-500" />
+                      </div>
+                  </main>
+              </div>
+            </>
+      );
   }
 
   return (

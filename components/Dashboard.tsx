@@ -1,8 +1,9 @@
-import React, { Suspense, useState, lazy, useEffect } from 'react';
+import React, { Suspense, useState, lazy, useEffect, useMemo } from 'react';
 import Card from './shared/Card';
 import { WIDGETS, WIDGET_DEFINITIONS } from '../constants';
 import { RefreshCw } from 'lucide-react';
 import type { WidgetVisibility, JournalEntry } from '../types';
+import { useAppContext } from '../contexts/AppContext';
 
 const STORAGE_KEY_WIDGET_VISIBILITY = 'dashboard-widget-visibility';
 
@@ -22,11 +23,15 @@ const getFromLS = (key: string, defaultValue: any) => {
 
 const mainWidget = 'trades_table';
 
-const remainingWidgets = [
-    'todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management',
-    'trading_checklist', 'position_size_calculator', 'sessions_clock', 'live_prices',
-    'market_news', 'psychology_analysis', 'ai_summary', 'weather', 'hafez_fortune'
+const simpleWidgets = [
+    'todays_performance', 'wallet_overview', 'sessions_clock', 'market_news'
 ];
+
+const advancedWidgets = [
+    'performance_analytics', 'risk_management', 'trading_checklist', 'position_size_calculator',
+    'live_prices', 'psychology_analysis', 'ai_summary', 'weather', 'hafez_fortune'
+];
+
 
 interface DashboardProps {
     onOpenModal: (entry: JournalEntry | null) => void;
@@ -34,12 +39,13 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
     const [widgetVisibility, setWidgetVisibility] = useState<WidgetVisibility>({});
+    const { appMode } = useAppContext();
 
     useEffect(() => {
         const loadVisibility = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
-            const defaultVisibleWidgets = [mainWidget, ...remainingWidgets];
+            const defaultVisibleWidgets = [mainWidget, ...simpleWidgets, ...advancedWidgets];
 
             const newVisibility: WidgetVisibility = {};
             Object.keys(WIDGET_DEFINITIONS).forEach(key => {
@@ -72,6 +78,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
         );
     };
 
+    const widgetsToRender = useMemo(() => {
+        if (appMode === 'simple') {
+            return simpleWidgets;
+        }
+        return [...simpleWidgets, ...advancedWidgets];
+    }, [appMode]);
+
+
     return (
         <div className="p-4 space-y-4">
             {/* Main full-width widget */}
@@ -81,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal }) => {
 
             {/* Grid for other widgets */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {remainingWidgets.map(createWidget)}
+                {widgetsToRender.map(createWidget)}
             </div>
         </div>
     );
