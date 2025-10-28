@@ -25,7 +25,7 @@ export const WIDGETS: { [key: string]: React.LazyExoticComponent<React.FC<any>> 
 export const WIDGET_DEFINITIONS: { [key: string]: { title: string, icon: React.ElementType, description: string } } = {
   market_news: { title: 'اخبار بازار', icon: Flame, description: 'اخبار لحظه‌ای بازارهای فارکس، کریپتو و بورس.' },
   sessions_clock: { title: 'سشن‌های معاملاتی', icon: Globe, description: 'وضعیت بازارهای جهانی و ساعت سشن‌ها.' },
-  trades_table: { title: 'آخرین معاملات', icon: History, description: 'نمایش سریع آخرین معاملات ثبت‌شده در ژورنال.' },
+  trades_table: { title: 'پایش معاملات', icon: History, description: 'نمایش پوزیشن‌های باز و تاریخچه آخرین معاملات.' },
   risk_management: { title: 'مدیریت ریسک', icon: ShieldAlert, description: 'تحلیل ریسک فعال و توزیع نمادها.' },
   performance_analytics: { title: 'تحلیل عملکرد کلی', icon: TrendingUp, description: 'شاخص‌های کلیدی عملکرد مانند نرخ برد و R/R.' },
   trading_checklist: { title: 'چک‌لیست ترید', icon: ListChecks, description: 'چک‌لیست ستاپ معاملاتی فعال شما.' },
