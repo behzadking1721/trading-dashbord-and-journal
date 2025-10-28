@@ -104,18 +104,31 @@ const AddToCalendarButton: React.FC<{ event: MarketEvent; isAdded: boolean; onAd
     return (
         <div className="relative">
             <button onClick={() => setIsOpen(!isOpen)} title="افزودن به تقویم" className="p-2 text-gray-400 hover:text-indigo-500"><CalendarPlus size={16} /></button>
-            {isOpen && <div className="absolute z-10 left-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5"><div className="py-1"><a href="#" onClick={e=>{e.preventDefault();handleGoogle()}} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">افزودن به تقویم گوگل</a><a href="#" onClick={e=>{e.preventDefault();handleIcs()}} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">دانلود فایل ICS</a></div></div>}
+            {isOpen && <div className="absolute z-10 left-full ml-2 -mt-8 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5"><div className="py-1"><a href="#" onClick={e=>{e.preventDefault();handleGoogle()}} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">افزودن به تقویم گوگل</a><a href="#" onClick={e=>{e.preventDefault();handleIcs()}} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">دانلود فایل ICS</a></div></div>}
         </div>
     );
 };
 
-const EventCard: React.FC<{ event: MarketEvent; isPinned: boolean; isAdded: boolean; onPinToggle: (id: string) => void; onAddAlert: (event: MarketEvent) => void; onAddToCalendar: (id: string) => void; }> = ({ event, isPinned, isAdded, onPinToggle, onAddAlert, onAddToCalendar }) => {
+const EventCard: React.FC<{ 
+    event: MarketEvent; 
+    isPinned: boolean; 
+    isAdded: boolean; 
+    onPinToggle: (id: string) => void; 
+    onAddAlert: (event: MarketEvent, minutes: number) => void; 
+    onAddToCalendar: (id: string) => void; 
+}> = ({ event, isPinned, isAdded, onPinToggle, onAddAlert, onAddToCalendar }) => {
     const impactStyles = {
         High: { border: 'border-red-500', bg: 'bg-red-500/5 dark:bg-red-500/10' },
         Medium: { border: 'border-orange-400', bg: 'bg-orange-400/5 dark:bg-orange-400/10' },
         Low: { border: 'border-gray-400', bg: 'bg-gray-400/5 dark:bg-gray-400/10' },
     };
     const style = impactStyles[event.impact];
+    const [isAlertMenuOpen, setIsAlertMenuOpen] = useState(false);
+
+    const handleSetAlert = (minutes: number) => {
+        onAddAlert(event, minutes);
+        setIsAlertMenuOpen(false);
+    };
 
     return (
         <div className={`flex items-stretch p-4 rounded-xl border-l-4 ${style.border} ${isPinned ? 'bg-indigo-500/5 dark:bg-indigo-500/10' : style.bg} glass-card`}>
@@ -151,8 +164,22 @@ const EventCard: React.FC<{ event: MarketEvent; isPinned: boolean; isAdded: bool
                 <Countdown targetDate={event.time} />
             </div>
              <div className="w-[10%] flex flex-col items-center justify-center text-gray-400 border-l border-gray-200 dark:border-gray-700 pl-4">
-                <button onClick={() => onPinToggle(event.id)} title="پین کردن" className={`p-1 rounded-full transition-colors ${isPinned ? 'text-yellow-500' : 'hover:text-yellow-500'}`}><Pin size={16} /></button>
-                <button onClick={() => onAddAlert(event)} title="ایجاد هشدار" className="p-1 rounded-full hover:text-indigo-500"><Bell size={16} /></button>
+                <button onClick={() => onPinToggle(event.id)} title="پین کردن" className={`p-2 rounded-full transition-colors ${isPinned ? 'text-yellow-500' : 'hover:text-yellow-500'}`}><Pin size={16} /></button>
+                <div className="relative">
+                    <button onClick={() => setIsAlertMenuOpen(!isAlertMenuOpen)} title="ایجاد هشدار" className="p-2 text-gray-400 hover:text-indigo-500"><Bell size={16} /></button>
+                     {isAlertMenuOpen && (
+                        <div className="absolute z-10 left-full ml-2 -mt-8 w-40 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+                            <div className="py-1">
+                                <p className="px-3 pt-2 pb-1 text-xs text-gray-500">اطلاع‌رسانی قبل از رویداد:</p>
+                                {[5, 15, 30, 60].map(mins => (
+                                     <a href="#" key={mins} onClick={e => { e.preventDefault(); handleSetAlert(mins); }} className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        {mins} دقیقه
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
                 <AddToCalendarButton event={event} isAdded={isAdded} onAdd={onAddToCalendar} />
             </div>
         </div>
@@ -222,6 +249,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
         let timeBasedEvents: MarketEvent[];
 
         if (filters.time === 'today') {
+            // FIX: Correctly filter for the entire day, including past events of today.
             timeBasedEvents = events.filter(event => new Date(event.time).toDateString() === today.toDateString());
         } else if (filters.time === 'week') {
             const dayOfWeek = today.getDay();
@@ -266,9 +294,22 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     };
 
     const handlePinToggle = (id: string) => setPinnedIds(p => { const n = p.includes(id) ? p.filter(pId => pId !== id) : [...p, id]; try { localStorage.setItem(PINNED_EVENTS_LS_KEY, JSON.stringify(n)); } catch (e) { console.error(e); } return n; });
-    const handleAddAlert = async (item: MarketEvent) => {
-        const mins = prompt("چند دقیقه قبل از رویداد اطلاع داده شود؟", "5");
-        if (mins) { const triggerMins = parseInt(mins, 10); if (!isNaN(triggerMins) && triggerMins > 0) { await addAlert({ id: `news-${item.id}-${Date.now()}`, type: 'news', status: 'active', createdAt: new Date().toISOString(), newsId: item.id, newsTitle: item.event, eventTime: item.time, triggerBeforeMinutes: triggerMins }); addNotification(`هشدار برای "${item.event}" ثبت شد.`, 'success'); } else { addNotification("عدد معتبر وارد کنید.", 'error'); }}
+    const handleAddAlert = async (item: MarketEvent, triggerMins: number) => {
+        if (!isNaN(triggerMins) && triggerMins > 0) {
+            await addAlert({ 
+                id: `news-${item.id}-${Date.now()}`, 
+                type: 'news', 
+                status: 'active', 
+                createdAt: new Date().toISOString(), 
+                newsId: item.id, 
+                newsTitle: item.event, 
+                eventTime: item.time, 
+                triggerBeforeMinutes: triggerMins 
+            }); 
+            addNotification(`هشدار برای "${item.event}" ثبت شد.`, 'success'); 
+        } else { 
+            addNotification("عدد معتبر وارد کنید.", 'error'); 
+        }
     };
     const markAsAddedToCalendar = (id: string) => { try { localStorage.setItem(`${CALENDAR_ADDED_LS_KEY_PREFIX}${id}`, 'true'); setAddedToCalendarIds(p => new Set(p).add(id)); addNotification("رویداد به تقویم شما اضافه شد.", "success"); } catch (e) { addNotification("خطا در ذخیره وضعیت تقویم.", "error"); }};
 

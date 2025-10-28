@@ -198,8 +198,8 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             // FIX: Replaced `addAreaSeries` with `addSeries('Area')` as suggested by the error message. This is common with older versions of lightweight-charts.
-             seriesRef.current = chartRef.current.addSeries('Area') as ISeriesApi<'Area'>;
+             // FIX: `addSeries` does not accept a string argument. Using the correct `addAreaSeries()` method to create the chart series.
+             seriesRef.current = chartRef.current.addAreaSeries();
         }
 
         const isDark = theme !== 'light';
