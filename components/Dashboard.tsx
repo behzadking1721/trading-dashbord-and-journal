@@ -20,11 +20,10 @@ const getFromLS = (key: string, defaultValue: any) => {
     return defaultValue;
 };
 
-// Define which widgets belong to which column based on a logical trading workflow.
-// In RTL, these render from right to left in the order they appear in the JSX.
-const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'ai_summary'];
-const middleColumnWidgets = ['trades_table', 'todays_performance', 'performance_analytics', 'wallet_overview', 'psychology_analysis'];
-const leftColumnWidgets = ['trading_checklist', 'position_size_calculator', 'risk_management', 'hafez_fortune', 'weather'];
+// Define widgets for the new two-part layout
+const kpiWidgets = ['todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management'];
+const mainColumnWidgets = ['trades_table'];
+const sideColumnWidgets = ['sessions_clock', 'live_prices', 'trading_checklist', 'position_size_calculator', 'market_news'];
 
 
 const Dashboard: React.FC = () => {
@@ -35,9 +34,7 @@ const Dashboard: React.FC = () => {
             const savedVisibility = getFromLS(STORAGE_KEY_WIDGET_VISIBILITY, null);
             
             const defaultVisibleWidgets = [
-                'todays_performance', 'performance_analytics', 'wallet_overview', 'risk_management',
-                'trades_table', 'sessions_clock', 'live_prices', 'trading_checklist', 'market_news',
-                'hafez_fortune', 'psychology_analysis', 'position_size_calculator',
+                ...kpiWidgets, ...mainColumnWidgets, ...sideColumnWidgets
             ];
 
             const newVisibility: WidgetVisibility = {};
@@ -67,24 +64,23 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                
-                {/* Visually Right Column (Tools & Prep) */}
-                <div className="xl:col-span-1 flex flex-col gap-6">
-                    {leftColumnWidgets.map(createWidget)}
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+            {/* Top KPI Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                {kpiWidgets.map(createWidget)}
+            </div>
+
+            {/* Main Workspace */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Column */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    {mainColumnWidgets.map(createWidget)}
                 </div>
 
-                {/* Middle Column (Core Operations & Status) */}
-                <div className="xl:col-span-2 flex flex-col gap-6">
-                    {middleColumnWidgets.map(createWidget)}
+                {/* Side Column */}
+                <div className="lg:col-span-1 flex flex-col gap-6">
+                    {sideColumnWidgets.map(createWidget)}
                 </div>
-
-                {/* Visually Left Column (Market Context) */}
-                <div className="xl:col-span-1 flex flex-col gap-6">
-                    {rightColumnWidgets.map(createWidget)}
-                </div>
-
             </div>
         </div>
     );
