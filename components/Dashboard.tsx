@@ -21,7 +21,7 @@ const getFromLS = (key: string, defaultValue: any) => {
 };
 
 // Define which widgets belong to which column
-const leftColumnWidgets = ['todays_performance', 'wallet_overview', 'performance_analytics', 'risk_management', 'trading_checklist'];
+const leftColumnWidgets = ['trading_checklist', 'risk_management', 'todays_performance', 'wallet_overview', 'performance_analytics'];
 const middleColumnWidgets = ['trades_table'];
 const rightColumnWidgets = ['sessions_clock', 'live_prices', 'market_news', 'hafez_fortune', 'ai_summary', 'weather'];
 
