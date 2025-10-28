@@ -21,9 +21,9 @@ const tabColorClasses: { [key: string]: { border: string, text: string, bg: stri
 };
 
 const SkeletonLoader: React.FC = () => (
-    <div className="animate-pulse space-y-2">
-        {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700/50 rounded-md"></div>
+    <div className="animate-pulse space-y-3">
+        {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-28 bg-gray-200 dark:bg-gray-700/50 rounded-xl"></div>
         ))}
     </div>
 );
@@ -38,29 +38,69 @@ const Countdown: React.FC<{ targetDate: string }> = ({ targetDate }) => {
     }, []);
 
     const diff = target.getTime() - now.getTime();
-    if (diff <= 0) return <span className="text-sm text-gray-400 dark:text-gray-500">منتشر شد</span>;
+    if (diff <= 0) return <span className="text-sm text-gray-400 dark:text-gray-500 font-semibold">منتشر شد</span>;
 
     const hours = String(Math.floor(diff / 3600000)).padStart(2, '0');
     const minutes = String(Math.floor((diff / 60000) % 60)).padStart(2, '0');
     const seconds = String(Math.floor((diff / 1000) % 60)).padStart(2, '0');
+    
+    const isUrgent = diff < 10 * 60 * 1000; // Under 10 minutes
 
-    return <span className="font-mono text-base tabular-nums">{`${hours}:${minutes}:${seconds}`}</span>;
-};
-
-const ImpactIndicator: React.FC<{ impact: MarketEvent['impact'] }> = ({ impact }) => {
-    const styles = {
-        High: { color: 'bg-red-500', label: 'بالا' },
-        Medium: { color: 'bg-orange-400', label: 'متوسط' },
-        Low: { color: 'bg-gray-400', label: 'پایین' },
-    };
     return (
-        <div className="flex items-center gap-2" title={`اهمیت: ${styles[impact].label}`}>
-            <span className={`w-3 h-3 rounded-full ${styles[impact].color}`}></span>
+        <div className={`text-center transition-colors ${isUrgent ? 'text-red-500 animate-pulse' : ''}`}>
+            <p className="font-mono text-xl tabular-nums font-bold">{`${hours}:${minutes}:${seconds}`}</p>
+            <p className="text-[10px] text-gray-500 -mt-1">باقیمانده</p>
         </div>
     );
 };
 
-const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fetchData, color, viewMode }) => {
+const EventCard: React.FC<{ event: MarketEvent }> = ({ event }) => {
+    const impactStyles = {
+        High: { border: 'border-red-500', bg: 'bg-red-500/5 dark:bg-red-500/10' },
+        Medium: { border: 'border-orange-400', bg: 'bg-orange-400/5 dark:bg-orange-400/10' },
+        Low: { border: 'border-gray-400', bg: 'bg-gray-400/5 dark:bg-gray-400/10' },
+    };
+    const style = impactStyles[event.impact];
+
+    return (
+        <div className={`flex items-stretch p-4 rounded-xl border-l-4 ${style.border} ${style.bg} glass-card`}>
+            <div className="w-[20%] flex flex-col items-center justify-center border-r border-gray-200 dark:border-gray-700 pr-4">
+                <p className="font-bold text-lg">{new Date(event.time).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(event.time).toLocaleDateString('fa-IR', { weekday: 'long' })}</p>
+                <div className="flex items-center gap-2 mt-3">
+                    {event.countryCode !== 'CRYPTO' && event.countryCode !== 'OPEC' && 
+                        <img src={`https://flagcdn.com/w20/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-5 h-auto rounded-sm" />
+                    }
+                    <span className="font-semibold text-sm">{event.currency}</span>
+                </div>
+            </div>
+
+            <div className="w-[55%] flex flex-col justify-center px-4">
+                <h3 className="font-bold text-base mb-3">{event.event}</h3>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                    <div>
+                        <p className="text-gray-500 dark:text-gray-400">واقعی</p>
+                        <p className="font-semibold text-sm text-indigo-500">{event.actual ?? '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 dark:text-gray-400">پیش‌بینی</p>
+                        <p className="font-semibold text-sm">{event.forecast ?? '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-gray-500 dark:text-gray-400">قبلی</p>
+                        <p className="font-semibold text-sm">{event.previous ?? '-'}</p>
+                    </div>
+                </div>
+            </div>
+            <div className="w-[25%] flex items-center justify-center">
+                <Countdown targetDate={event.time} />
+            </div>
+        </div>
+    );
+};
+
+
+const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fetchData, color }) => {
     const [events, setEvents] = useState<MarketEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -76,9 +116,8 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
         setError(null);
         try {
             const data = await fetchData();
-            const sortedData = data.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-            setEvents(sortedData);
-            const uniqueCountries = [...new Set(sortedData.map(e => e.countryCode).filter(c => c !== 'CRYPTO'))].sort();
+            setEvents(data); // Already sorted in the fetch function
+            const uniqueCountries = [...new Set(data.map(e => e.countryCode).filter(c => c !== 'CRYPTO' && c !== 'OPEC'))].sort();
             setCountries(uniqueCountries);
         } catch (e: any) {
             setError(e.message || `خطا در دریافت اطلاعات بازار ${market}.`);
@@ -104,7 +143,13 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     }, [loadData]);
 
     const filteredEvents = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         return events.filter(event => {
+            const eventDate = new Date(event.time);
+            if (eventDate < today) return false; // Filter out past days
+
             const searchLower = filters.search.toLowerCase();
             const matchSearch = searchLower === '' ||
                 event.event.toLowerCase().includes(searchLower) ||
@@ -114,7 +159,7 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
             return matchSearch && matchImpact && matchCountry;
         });
     }, [events, filters]);
-
+    
     const handleFilterChange = <K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
@@ -129,38 +174,13 @@ const FinancialCalendarTab: React.FC<FinancialCalendarTabProps> = ({ market, fet
     const renderContent = () => {
         if (loading && events.length === 0) return <SkeletonLoader />;
         if (error) return <div className="text-center p-8 text-red-500"><AlertTriangle className="mx-auto mb-2" />{error}</div>;
-        if (filteredEvents.length === 0) return <div className="text-center p-8 text-gray-500">هیچ رویدادی مطابق با فیلترهای شما یافت نشد.</div>;
+        if (filteredEvents.length === 0) return <div className="text-center p-8 text-gray-500">هیچ رویداد آتی مطابق با فیلترهای شما یافت نشد.</div>;
 
         return (
-            <div className={`rounded-lg border dark:border-gray-700 bg-white/30 dark:bg-gray-800/30 overflow-hidden`}>
-                <div className="grid grid-cols-12 gap-4 items-center p-4 text-sm uppercase text-gray-500 dark:text-gray-400 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 font-semibold">
-                    <span className="col-span-3">زمان</span>
-                    <span className="col-span-1">کشور</span>
-                    <span className={viewMode === 'expanded' ? "col-span-4" : "col-span-5"}>رویداد</span>
-                    <span className="col-span-1 text-center">اهمیت</span>
-                    {viewMode === 'expanded' && <span className="col-span-2 text-center">ارقام</span>}
-                    <span className="col-span-1 text-center">شمارش معکوس</span>
-                </div>
-                <div>
-                    {filteredEvents.map(event => (
-                        <div key={event.id} className="grid grid-cols-12 gap-4 items-center p-4 border-b dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                            <div className="col-span-3 font-semibold text-sm">
-                                {new Date(event.time).toLocaleString('fa-IR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                            <div className="col-span-1 flex items-center gap-2">
-                                {event.countryCode !== 'CRYPTO' && event.countryCode !== 'OPEC' && <img src={`https://flagcdn.com/w20/${event.countryCode.toLowerCase()}.png`} alt={event.countryCode} className="w-5 h-auto rounded-sm" />}
-                            </div>
-                            <div className={`${viewMode === 'expanded' ? "col-span-4" : "col-span-5"} font-semibold text-base`}>{event.event} ({event.currency})</div>
-                            <div className="col-span-1 flex justify-center"><ImpactIndicator impact={event.impact} /></div>
-                            {viewMode === 'expanded' && <div className="col-span-2 grid grid-cols-3 gap-1 text-center text-sm font-mono">
-                                <span className={event.actual ? `font-bold ${colors.text}` : 'text-gray-500'}>{event.actual ?? '...'}</span>
-                                <span className="text-gray-500">{event.forecast ?? '-'}</span>
-                                <span className="text-gray-500">{event.previous ?? '-'}</span>
-                            </div>}
-                            <div className="col-span-1 text-center"><Countdown targetDate={event.time} /></div>
-                        </div>
-                    ))}
-                </div>
+            <div className="space-y-3">
+                {filteredEvents.map(event => (
+                    <EventCard key={event.id} event={event} />
+                ))}
             </div>
         );
     };

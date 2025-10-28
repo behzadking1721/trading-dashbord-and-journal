@@ -1,6 +1,7 @@
 import type { MarketEvent } from '../types';
 
-const CSV_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.csv?version=ecf12feb3895649f700076a2b3ef16f5';
+// The new, reliable JSON endpoint provided by the user.
+const JSON_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=ecf12feb3895649f700076a2b3ef16f5';
 const PROXY_URL = 'https://corsproxy.io/?';
 
 const currencyToCountryCode: { [key: string]: string } = {
@@ -10,120 +11,46 @@ const currencyToCountryCode: { [key: string]: string } = {
 const parseImpact = (impact: string): MarketEvent['impact'] => {
     const lowerImpact = impact.toLowerCase();
     if (lowerImpact.includes('high')) return 'High';
-    if (lowerImpact.includes('medium') || lowerImpact.includes('moderate')) return 'Medium';
-    if (lowerImpact.includes('low')) return 'Low';
-    return 'Low'; // Default for non-impact events like holidays
+    if (lowerImpact.includes('medium')) return 'Medium';
+    // Treat 'Low' and 'Holiday' as 'Low' impact.
+    if (lowerImpact.includes('low') || lowerImpact.includes('holiday')) return 'Low';
+    return 'Low';
 };
-
-const parseDateTime = (dateStr: string, timeStr: string): Date => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    
-    // The date format is MM-DD
-    const [month, day] = dateStr.split('-').map(Number);
-    
-    let hours = 0;
-    let minutes = 0;
-    
-    if (timeStr.toLowerCase() !== 'all day') {
-        const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(am|pm)/i);
-        if (timeMatch) {
-            hours = parseInt(timeMatch[1], 10);
-            minutes = parseInt(timeMatch[2], 10);
-            const period = timeMatch[3].toLowerCase();
-
-            if (period === 'pm' && hours < 12) {
-                hours += 12;
-            }
-            if (period === 'am' && hours === 12) { // Midnight case
-                hours = 0;
-            }
-        }
-    }
-    
-    // Create date object. Assuming the times are in the user's local timezone for simplicity.
-    const eventDate = new Date(currentYear, month - 1, day, hours, minutes);
-    
-    // Handle year rollover (e.g., if it's January and the event is for December)
-    if (now.getMonth() === 0 && eventDate.getMonth() === 11) {
-        eventDate.setFullYear(currentYear - 1);
-    }
-    // Handle year rollover (e.g., if it's December and the event is for January)
-    else if (now.getMonth() === 11 && eventDate.getMonth() === 0) {
-        eventDate.setFullYear(currentYear + 1);
-    }
-
-    return eventDate;
-};
-
-
-// Simple CSV parser that handles quoted fields
-const parseCsvLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-    result.push(current.trim());
-    return result;
-}
-
 
 export const fetchForexEvents = async (): Promise<MarketEvent[]> => {
     try {
-        const response = await fetch(`${PROXY_URL}${CSV_URL}`);
+        const response = await fetch(`${PROXY_URL}${encodeURIComponent(JSON_URL)}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch calendar data: ${response.statusText}`);
         }
-        const csvText = await response.text();
-        const lines = csvText.trim().split('\n');
-        
-        // Skip header
-        const dataLines = lines.slice(1);
-        
-        const events: MarketEvent[] = dataLines.map((line, index) => {
-            const columns = parseCsvLine(line);
-            
-            // Expected columns: Date,Time,Currency,Impact,Event,Actual,Forecast,Previous
-            if (columns.length < 8) {
-                console.warn(`Skipping invalid CSV line ${index + 2}: ${line}`);
-                return null;
-            }
+        const jsonData: any[] = await response.json();
 
-            const [date, time, currency, impact, event, actual, forecast, previous] = columns;
+        if (!Array.isArray(jsonData)) {
+            throw new Error('Invalid data format received from API.');
+        }
 
-            if (!date || !time || !currency) {
-                return null;
-            }
-
-            const eventTime = parseDateTime(date, time);
-
+        const events: MarketEvent[] = jsonData.map((item: any, index: number) => {
+            const currency = item.country || 'N/A';
             return {
-                id: `ff-${date}-${time}-${currency}-${index}`,
-                time: eventTime.toISOString(),
+                id: `ff-json-${item.date}-${currency}-${index}`,
+                time: item.date, // Already in ISO 8601 format
                 countryCode: currencyToCountryCode[currency] || currency,
                 currency: currency,
-                event: event.replace(/"/g, ''), // Remove quotes if any
-                impact: parseImpact(impact),
-                actual: actual || null,
-                forecast: forecast || null,
-                previous: previous || null,
+                event: item.title,
+                impact: parseImpact(item.impact),
+                actual: item.actual || null,
+                forecast: item.forecast || null,
+                previous: item.previous || null,
             };
-        }).filter((event): event is MarketEvent => event !== null);
+        });
+        
+        // Sort events by time, as the API might not guarantee order
+        return events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
-        return events;
-
-    } catch (error) {
-        console.error("Error fetching or parsing Forex Factory data:", error);
-        throw new Error("Failed to load Forex Factory calendar data.");
+    } catch (error)
+    {
+        console.error("Error fetching or parsing Forex Factory JSON data:", error);
+        // Throw a user-friendly error message.
+        throw new Error("Failed to load Forex Factory calendar data. Please check your connection.");
     }
 };
