@@ -260,8 +260,8 @@ const SettingsPage: React.FC = () => {
         <div className="p-6 h-full flex flex-col">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold">تنظیمات</h1>
-                    <p className="text-gray-500 dark:text-gray-400">داشبورد، ژورنال و ابزارهای خود را شخصی‌سازی کنید.</p>
+                    <h1 className="text-2xl font-bold">مرکز کنترل و شخصی‌سازی</h1>
+                    <p className="text-gray-500 dark:text-gray-400">داشبورد، ژورنال و ابزارهای خود را از اینجا مدیریت کنید.</p>
                 </div>
             </header>
              <div className="border-b border-gray-200 dark:border-gray-700 mb-6">

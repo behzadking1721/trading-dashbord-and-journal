@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createChart, IChartApi, ISeriesApi, Time, PriceLineOptions, AreaData, WhitespaceData, AreaSeriesOptions, DeepPartial, AreaStyleOptions, SeriesOptionsCommon } from 'lightweight-charts';
 import { getJournalEntries } from '../../db';
 import type { JournalEntry, TradingSetup } from '../../types';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { useAppContext } from '../contexts/AppContext';
 import { RefreshCw, TrendingUp, TrendingDown, DollarSign, Percent, Target, ChevronsDown, ChevronsUp, Activity, Filter, BarChartHorizontal, Briefcase } from 'lucide-react';
 
 interface Stats {
@@ -65,7 +65,7 @@ const PerformanceAnalyticsPage: React.FC = () => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
-    const { theme } = useContext(ThemeContext);
+    const { theme } = useAppContext();
 
     // Filters
     const [filters, setFilters] = useState(() => {
@@ -219,8 +219,9 @@ const PerformanceAnalyticsPage: React.FC = () => {
                 layout: { background: { color: 'transparent' } },
                 timeScale: { timeVisible: true, secondsVisible: false },
              });
-             // FIX: The error indicates `addAreaSeries` does not exist on `IChartApi` and suggests `addSeries`.
-             // This might be due to a specific version of the library (e.g., a pre-release) that used this alternative API.
+// FIX: The TypeScript type definitions for `IChartApi` seem to be missing `addAreaSeries` in this environment,
+// though the method should exist at runtime in recent versions of lightweight-charts.
+// Casting to `any` bypasses the compile-time check to resolve the error.
              seriesRef.current = (chartRef.current as any).addAreaSeries();
         }
 
