@@ -63,7 +63,7 @@ const RiskManagementWidget: React.FC = () => {
     }, []);
 
   return (
-    <div className="h-full flex flex-col justify-around space-y-4">
+    <div className="h-full flex flex-col justify-around space-y-3">
        {loading ? (
             <div className="animate-pulse space-y-2">
                 <div className="flex justify-between items-center">
@@ -78,7 +78,7 @@ const RiskManagementWidget: React.FC = () => {
                 <h4 className="text-sm font-semibold">
                     مجموع ریسک فعال
                 </h4>
-                <span className="text-lg font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
+                <span className="text-base font-bold text-yellow-500">{totalRiskPercent.toFixed(1)}%</span>
             </div>
             <ProgressBar value={riskLevel} />
             <p className="text-xs text-gray-500 mt-1">حد مجاز ریسک کلی: {maxAllowedRisk}%</p>
@@ -86,12 +86,12 @@ const RiskManagementWidget: React.FC = () => {
        )}
         
         <div>
-            <h4 className="text-sm font-semibold mb-3">توزیع نمادها (۱۰ معامله اخیر)</h4>
+            <h4 className="text-sm font-semibold mb-2">توزیع نمادها (۱۰ اخیر)</h4>
             {loading ? (
-                 <div className="flex items-center justify-center h-24">
+                 <div className="flex items-center justify-center h-20">
                     <div className="animate-pulse flex space-x-4">
-                        <div className="rounded-full bg-gray-300 dark:bg-gray-600 h-12 w-12"></div>
-                        <div className="flex-1 space-y-3 py-1">
+                        <div className="rounded-full bg-gray-300 dark:bg-gray-600 h-10 w-10"></div>
+                        <div className="flex-1 space-y-2 py-1">
                             <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
                             <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
                             <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded"></div>
@@ -100,11 +100,11 @@ const RiskManagementWidget: React.FC = () => {
                 </div>
             ) : (
                 <div className="flex items-center justify-center text-gray-400">
-                    <PieChart className="w-24 h-24 min-w-24" />
-                     <div className="space-y-2 text-xs w-full">
+                    <PieChart className="w-20 h-20 min-w-20" />
+                     <div className="space-y-1 text-xs w-full">
                         {distribution.length > 0 ? distribution.map(item => (
                              <div key={item.name} className="flex items-center gap-2">
-                                <span className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}}></span> 
+                                <span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: item.color}}></span> 
                                 {item.name} ({item.value.toFixed(0)}%)
                              </div>
                         )) : <p className="text-xs text-center">داده‌ای برای نمایش وجود ندارد.</p>}

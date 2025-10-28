@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getJournalEntries } from '../../db';
 
 const SkeletonLoader = () => (
-    <div className="animate-pulse space-y-4">
+    <div className="animate-pulse space-y-3">
         {[...Array(3)].map((_, i) => (
             <div key={i} className="flex justify-between items-center">
                 <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-2/5"></div>
@@ -61,7 +61,7 @@ const WalletOverviewWidget: React.FC = () => {
     }
 
   return (
-    <div className="space-y-3 text-sm h-full flex flex-col justify-center">
+    <div className="space-y-2 text-sm h-full flex flex-col justify-center">
         {loading ? <SkeletonLoader /> : (
             <>
                  <div className="flex justify-between items-center">

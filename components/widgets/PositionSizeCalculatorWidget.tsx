@@ -66,16 +66,16 @@ const PositionSizeCalculatorWidget: React.FC = () => {
         : 1;
 
     return (
-        <div className="h-full flex flex-col justify-around space-y-4 text-sm">
-            <div className="p-3 text-center rounded-lg bg-gray-100 dark:bg-gray-700/50">
+        <div className="h-full flex flex-col justify-around space-y-3 text-sm">
+            <div className="p-2 text-center rounded-lg bg-gray-100 dark:bg-gray-700/50">
                 <p className="text-xs text-gray-500 dark:text-gray-400">حجم محاسبه شده (لات)</p>
-                <p className="text-3xl font-bold font-mono text-indigo-500">{calculatedSize || '0.00'}</p>
+                <p className="text-2xl font-bold font-mono text-indigo-500">{calculatedSize || '0.00'}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     برای حساب <span className="font-mono">${riskSettings?.accountBalance.toLocaleString() || 'N/A'}</span> با ریسک <span className="font-mono">{riskPercentToShow}%</span>
                 </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <div>
                     <label className="block text-xs font-medium mb-1">قیمت ورود</label>
                     <input

@@ -15,10 +15,10 @@ const isToday = (date: Date): boolean => {
 const StatItem: React.FC<{ icon: React.ElementType, label: string, value: string | number, color?: string }> = ({ icon: Icon, label, value, color = 'text-gray-900 dark:text-gray-100' }) => (
     <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Icon size={16} />
+            <Icon size={14} />
             <span>{label}</span>
         </div>
-        <span className={`font-bold font-mono text-lg ${color}`}>{value}</span>
+        <span className={`font-bold font-mono text-base ${color}`}>{value}</span>
     </div>
 );
 

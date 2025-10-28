@@ -14,7 +14,7 @@ const KpiCard: React.FC<{ icon: React.ElementType, label: string, value: string,
         <p className={`text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1`}>
             <Icon size={12}/> {label}
         </p>
-        <p className={`text-lg font-bold ${color}`}>{value}</p>
+        <p className={`text-base font-bold ${color}`}>{value}</p>
     </div>
 );
 
@@ -73,7 +73,7 @@ const PerformanceAnalyticsWidget: React.FC = () => {
   return (
     <div className="h-full flex flex-col justify-center">
       {loading ? <SkeletonLoader /> : (
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-3 gap-3 text-center">
             <KpiCard 
                 icon={Percent}
                 label="نرخ برد"
